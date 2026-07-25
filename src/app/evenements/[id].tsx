@@ -1,6 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,20 +15,27 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MetaRow } from '@/components/meta-row';
+import { PlayerRow } from '@/components/player-row';
 import { StatusBadge } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
-import { useTournamentDetail } from '@/hooks/use-tournament-detail';
+import { useTournamentDetail, visibleSlice } from '@/hooks/use-tournament-detail';
+import { ordinalFr } from '@/lib/ordinal';
 import { supabase } from '@/lib/supabase';
 import { formatEventDate, TypeLabels } from '@/lib/tournaments';
 
 const GreenColor = { light: '#1E7C45', dark: '#63D489' };
+const GreenBackground = { light: 'rgba(30,124,69,0.10)', dark: 'rgba(99,212,137,0.14)' };
 const RedColor = { light: '#C13438', dark: '#FF6369' };
 const RedBackground = { light: 'rgba(209,67,67,0.10)', dark: 'rgba(255,99,105,0.14)' };
+const TintBackground = { light: 'rgba(156,122,31,0.10)', dark: 'rgba(212,175,55,0.14)' };
 
+/** Nombre de lignes affichées directement sur la fiche avant « Voir tous ». */
+const InlineRegisteredLimit = 10;
+const InlineWaitlistLimit = 5;
 
 export default function EvenementDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,16 +45,62 @@ export default function EvenementDetailScreen() {
 
   const { session, loading: sessionLoading } = useSession();
   const { profile } = useProfile(session?.user.id);
-  const { tournament, loading, refresh, registeredCount, myRegistration, isOrganizer, isFull } =
-    useTournamentDetail(id, session?.user.id);
+  const {
+    tournament,
+    loading,
+    refresh,
+    registered,
+    waitlisted,
+    registeredCount,
+    myRegistration,
+    myWaitlistPosition,
+    isOrganizer,
+    isFull,
+  } = useTournamentDetail(id, session?.user.id);
 
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  // Garde-fou de désinscription : sur web, le bouton demande une seconde
-  // pression (« Confirmer ») pendant 5 s ; sur mobile, une alerte native.
+  // Garde-fou de sortie : sur web, le bouton demande une seconde pression
+  // pendant 5 s ; sur mobile, une alerte native.
   const [confirmingWithdraw, setConfirmingWithdraw] = useState(false);
+  // Bandeau « tu viens d'être promu », masqué une fois acquitté.
+  const [promotionSeen, setPromotionSeen] = useState(true);
+
+  const isCheckedIn = myRegistration?.status === 'checked_in';
+  const isRegistered = myRegistration?.status === 'registered' || isCheckedIn;
+  const isWaitlisted = myRegistration?.status === 'waitlisted';
+  const promotionKey = myRegistration ? `egide.promo.${myRegistration.id}` : null;
+
+  // Une promotion n'est annoncée qu'une fois : on retient l'acquittement
+  // sur l'appareil (pas de notification push en v1).
+  useEffect(() => {
+    if (!promotionKey || !myRegistration?.promoted_at) {
+      setPromotionSeen(true);
+      return;
+    }
+    AsyncStorage.getItem(promotionKey).then((seenAt) => {
+      setPromotionSeen(seenAt === myRegistration.promoted_at);
+    });
+  }, [promotionKey, myRegistration?.promoted_at]);
+
+  async function acknowledgePromotion() {
+    if (promotionKey && myRegistration?.promoted_at) {
+      await AsyncStorage.setItem(promotionKey, myRegistration.promoted_at);
+    }
+    setPromotionSeen(true);
+  }
 
   function askWithdraw() {
+    const title = isWaitlisted ? 'Quitter la liste d’attente ?' : 'Se désinscrire ?';
+    let message;
+    if (isWaitlisted) {
+      message = `Tu perdras ta position (${ordinalFr(myWaitlistPosition ?? 1)}). Si tu reviens, tu repartiras en fin de liste.`;
+    } else if (waitlisted.length > 0) {
+      message = 'Ta place sera attribuée au 1er joueur de la liste d’attente.';
+    } else {
+      message = 'Ta place sera libérée pour un autre joueur.';
+    }
+
     if (Platform.OS === 'web') {
       if (confirmingWithdraw) {
         setConfirmingWithdraw(false);
@@ -56,28 +110,32 @@ export default function EvenementDetailScreen() {
         setTimeout(() => setConfirmingWithdraw(false), 5000);
       }
     } else {
-      Alert.alert('Se désinscrire ?', 'Ta place sera libérée pour un autre joueur.', [
+      Alert.alert(title, message, [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'Se désinscrire', style: 'destructive', onPress: () => handleWithdraw() },
+        {
+          text: isWaitlisted ? 'Quitter' : 'Se désinscrire',
+          style: 'destructive',
+          onPress: () => handleWithdraw(),
+        },
       ]);
     }
   }
-
-  const isRegistered = myRegistration?.status === 'registered' || myRegistration?.status === 'checked_in';
 
   async function handleRegister() {
     if (!supabase || !session) return;
     setBusy(true);
     setActionError(null);
-    // upsert : réactive une éventuelle inscription « désinscrit ».
-    const { error } = await supabase
-      .from('registrations')
-      .upsert(
-        { tournament_id: id, player_id: session.user.id, status: 'registered' },
-        { onConflict: 'tournament_id,player_id' }
-      );
+    // La fonction côté base verrouille le tournoi le temps de compter les
+    // places : elle décide seule entre « inscrit » et « liste d'attente ».
+    const { error } = await supabase.rpc('register_for_tournament', {
+      p_tournament_id: id,
+    });
     if (error) {
-      setActionError('Impossible de finaliser l’inscription. Vérifie ta connexion et réessaie.');
+      setActionError(
+        isFull
+          ? 'Impossible de rejoindre la liste d’attente. Vérifie ta connexion et réessaie.'
+          : 'Impossible de finaliser l’inscription. Vérifie ta connexion et réessaie.'
+      );
     }
     await refresh();
     setBusy(false);
@@ -85,17 +143,53 @@ export default function EvenementDetailScreen() {
 
   async function handleWithdraw() {
     if (!supabase || !myRegistration) return;
+    const wasWaitlisted = isWaitlisted;
     setBusy(true);
     setActionError(null);
-    const { error } = await supabase
-      .from('registrations')
-      .update({ status: 'withdrawn', updated_at: new Date().toISOString() })
-      .eq('id', myRegistration.id);
+    // Libère la place et promeut le premier de la liste d'attente.
+    const { error } = await supabase.rpc('withdraw_from_tournament', {
+      p_tournament_id: id,
+    });
     if (error) {
-      setActionError('Impossible de te désinscrire. Vérifie ta connexion et réessaie.');
+      setActionError(
+        wasWaitlisted
+          ? 'Impossible de quitter la liste d’attente. Vérifie ta connexion et réessaie.'
+          : 'Impossible de te désinscrire. Vérifie ta connexion et réessaie.'
+      );
     }
     await refresh();
     setBusy(false);
+  }
+
+  /** Invitation à se connecter, à la place des pseudos, pour les visiteurs. */
+  function renderLockedList() {
+    return (
+      <View style={styles.lockedBlock}>
+        <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+        <ThemedText type="small" themeColor="textSecondary" style={styles.centeredText}>
+          Les pseudos des inscrits sont visibles par les membres connectés.
+        </ThemedText>
+        <Pressable style={styles.linkButton} onPress={() => router.push('/profil')}>
+          <ThemedText type="smallBold" style={{ color: colors.tint }}>
+            Se connecter
+          </ThemedText>
+        </Pressable>
+      </View>
+    );
+  }
+
+  /** Lien « Voir les N inscrits » vers l'écran complet. */
+  function renderSeeAll(label: string) {
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.seeAll, { opacity: pressed ? 0.8 : 1 }]}
+        onPress={() => router.push({ pathname: '/evenements/[id]/inscrits', params: { id } })}>
+        <ThemedText type="smallBold" style={{ color: colors.tint }}>
+          {label}
+        </ThemedText>
+        <Ionicons name="chevron-forward" size={16} color={colors.tint} />
+      </Pressable>
+    );
   }
 
   /** Barre d'action du bas : contenu selon l'état du visiteur et du tournoi. */
@@ -111,23 +205,35 @@ export default function EvenementDetailScreen() {
       { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.8 : 1 },
     ];
 
+    const registeredLine = (
+      <View style={styles.confirmRow}>
+        <Ionicons name="checkmark-circle" size={18} color={GreenColor[mode]} />
+        <ThemedText type="smallBold" style={{ color: GreenColor[mode] }}>
+          {isCheckedIn ? 'Présence confirmée' : 'Inscrit à ce tournoi'}
+        </ThemedText>
+      </View>
+    );
+
     let message = null;
     let button = null;
 
     if (tournament.status !== 'open') {
-      // Tournoi en cours ou terminé : inscriptions closes.
-      message = isRegistered ? (
-        <View style={styles.confirmRow}>
-          <Ionicons name="checkmark-circle" size={18} color={GreenColor[mode]} />
-          <ThemedText type="smallBold" style={{ color: GreenColor[mode] }}>
-            Inscrit à ce tournoi
+      // Tournoi en cours ou terminé : plus d'inscription possible.
+      if (isRegistered) {
+        message = registeredLine;
+      } else if (isWaitlisted) {
+        message = (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.ctaMessage}>
+            Les inscriptions sont closes — tu n’as pas obtenu de place.
           </ThemedText>
-        </View>
-      ) : (
-        <ThemedText type="small" themeColor="textSecondary" style={styles.ctaMessage}>
-          Les inscriptions sont closes.
-        </ThemedText>
-      );
+        );
+      } else {
+        message = (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.ctaMessage}>
+            Les inscriptions sont closes.
+          </ThemedText>
+        );
+      }
     } else if (isOrganizer) {
       message = (
         <View style={styles.confirmRow}>
@@ -164,15 +270,10 @@ export default function EvenementDetailScreen() {
           <ThemedText style={styles.buttonPrimaryText}>Créer mon profil</ThemedText>
         </Pressable>
       );
+    } else if (isCheckedIn) {
+      message = registeredLine;
     } else if (isRegistered) {
-      message = (
-        <View style={styles.confirmRow}>
-          <Ionicons name="checkmark-circle" size={18} color={GreenColor[mode]} />
-          <ThemedText type="smallBold" style={{ color: GreenColor[mode] }}>
-            Inscrit à ce tournoi
-          </ThemedText>
-        </View>
-      );
+      message = registeredLine;
       button = (
         <Pressable style={secondaryStyle} disabled={busy} onPress={askWithdraw}>
           {busy ? (
@@ -184,16 +285,41 @@ export default function EvenementDetailScreen() {
           )}
         </Pressable>
       );
+    } else if (isWaitlisted) {
+      message = (
+        <View style={styles.confirmRow}>
+          <Ionicons name="time-outline" size={16} color={colors.tint} />
+          <ThemedText type="smallBold" style={{ color: colors.tint }}>
+            {ordinalFr(myWaitlistPosition ?? 1)} sur la liste d’attente
+          </ThemedText>
+        </View>
+      );
+      button = (
+        <Pressable style={secondaryStyle} disabled={busy} onPress={askWithdraw}>
+          {busy ? (
+            <ActivityIndicator color={colors.tint} />
+          ) : (
+            <ThemedText style={{ color: RedColor[mode] }}>
+              {confirmingWithdraw ? 'Confirmer la sortie' : 'Quitter la liste d’attente'}
+            </ThemedText>
+          )}
+        </Pressable>
+      );
     } else if (isFull) {
+      // Complet : on propose la liste d'attente plutôt qu'un bouton mort.
       message = (
         <ThemedText type="small" themeColor="textSecondary" style={styles.ctaMessage}>
-          Liste d’attente bientôt disponible.
+          Complet. Les places libérées sont attribuées dans l’ordre de la liste.
         </ThemedText>
       );
       button = (
-        <View style={[styles.button, { backgroundColor: colors.backgroundElement, opacity: 0.6 }]}>
-          <ThemedText themeColor="textSecondary">Complet</ThemedText>
-        </View>
+        <Pressable style={primaryStyle} disabled={busy} onPress={handleRegister}>
+          {busy ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <ThemedText style={styles.buttonPrimaryText}>Rejoindre la liste d’attente</ThemedText>
+          )}
+        </Pressable>
       );
     } else {
       button = (
@@ -207,6 +333,8 @@ export default function EvenementDetailScreen() {
       );
     }
 
+    if (!message && !button) return null;
+
     return (
       <View
         style={[
@@ -214,7 +342,7 @@ export default function EvenementDetailScreen() {
           { backgroundColor: colors.background, borderTopColor: colors.backgroundSelected },
         ]}>
         {actionError ? (
-          <View style={[styles.errorBanner, { backgroundColor: RedBackground[mode] }]}>
+          <View style={[styles.banner, { backgroundColor: RedBackground[mode] }]}>
             <ThemedText type="small" style={{ color: RedColor[mode] }}>
               {actionError}
             </ThemedText>
@@ -256,6 +384,10 @@ export default function EvenementDetailScreen() {
   } else {
     const remaining = tournament.capacity - registeredCount;
     const fillPercent = Math.min(100, Math.round((registeredCount / tournament.capacity) * 100));
+    const visibleRegistered = visibleSlice(registered, InlineRegisteredLimit, session?.user.id);
+    const visibleWaitlist = visibleSlice(waitlisted, InlineWaitlistLimit, session?.user.id);
+    const showPromotion = Boolean(myRegistration?.promoted_at) && !promotionSeen && isRegistered;
+    const showCheckedIn = tournament.status !== 'open';
 
     body = (
       <>
@@ -280,8 +412,45 @@ export default function EvenementDetailScreen() {
             </ThemedText>
           </View>
 
+          {/* Bandeau : je viens d'être promu depuis la liste d'attente */}
+          {showPromotion ? (
+            <View style={[styles.statusBanner, { backgroundColor: GreenBackground[mode] }]}>
+              <Ionicons name="checkmark-circle" size={20} color={GreenColor[mode]} />
+              <View style={styles.statusBannerTexts}>
+                <ThemedText type="default" style={{ fontWeight: '700', color: GreenColor[mode] }}>
+                  Une place s’est libérée : tu es inscrit !
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Tu étais sur la liste d’attente. Ta place au {tournament.name} est confirmée.
+                </ThemedText>
+                <Pressable style={styles.linkButton} onPress={acknowledgePromotion}>
+                  <ThemedText type="smallBold" style={{ color: GreenColor[mode] }}>
+                    J’ai compris
+                  </ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
+          {/* Bandeau : je suis en liste d'attente */}
+          {isWaitlisted && myWaitlistPosition ? (
+            <View style={[styles.statusBanner, { backgroundColor: TintBackground[mode] }]}>
+              <Ionicons name="time-outline" size={20} color={colors.tint} />
+              <View style={styles.statusBannerTexts}>
+                <ThemedText type="default" style={{ fontWeight: '700', color: colors.tint }}>
+                  Tu es {ordinalFr(myWaitlistPosition)} sur la liste d’attente
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {myWaitlistPosition === 1
+                    ? 'Tu es le prochain à obtenir une place.'
+                    : `Il y a ${myWaitlistPosition - 1} joueur${myWaitlistPosition > 2 ? 's' : ''} devant toi. Tu seras inscrit automatiquement si une place se libère.`}
+                </ThemedText>
+              </View>
+            </View>
+          ) : null}
+
           {tournament.status === 'cancelled' ? (
-            <View style={[styles.errorBanner, { backgroundColor: RedBackground[mode] }]}>
+            <View style={[styles.banner, { backgroundColor: RedBackground[mode] }]}>
               <ThemedText type="small" style={{ color: RedColor[mode] }}>
                 Cet événement a été annulé par l’organisateur.
               </ThemedText>
@@ -307,10 +476,16 @@ export default function EvenementDetailScreen() {
             </MetaRow>
             <MetaRow icon="person-outline">
               <ThemedText type="small" themeColor="textSecondary">
-                Organisé par{' '}
-                <ThemedText type="smallBold" themeColor="text">
-                  {tournament.organizer?.pseudo ?? 'inconnu'}
-                </ThemedText>
+                {tournament.organizer?.pseudo ? (
+                  <>
+                    Organisé par{' '}
+                    <ThemedText type="smallBold" themeColor="text">
+                      {tournament.organizer.pseudo}
+                    </ThemedText>
+                  </>
+                ) : (
+                  'Organisateur visible par les membres connectés'
+                )}
               </ThemedText>
             </MetaRow>
           </View>
@@ -341,11 +516,86 @@ export default function EvenementDetailScreen() {
               <ThemedText type="small">
                 <ThemedText type="smallBold">Complet</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {'  '}Liste d’attente bientôt disponible.
+                  {'  '}
+                  {waitlisted.length > 0
+                    ? `${waitlisted.length} joueur${waitlisted.length > 1 ? 's' : ''} en liste d’attente`
+                    : 'Rejoins la liste d’attente pour être prévenu'}
                 </ThemedText>
               </ThemedText>
             )}
+
+            <View style={[styles.divider, { backgroundColor: colors.backgroundSelected }]} />
+
+            <ThemedText type="small" themeColor="textSecondary">
+              Joueurs inscrits
+            </ThemedText>
+
+            {!session ? (
+              renderLockedList()
+            ) : registered.length === 0 ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                {tournament.status === 'open'
+                  ? 'Aucun inscrit pour l’instant. Sois le premier !'
+                  : 'Aucun inscrit.'}
+              </ThemedText>
+            ) : (
+              <View style={styles.playerList}>
+                {visibleRegistered.map((registration) => (
+                  <PlayerRow
+                    key={registration.id}
+                    registration={registration}
+                    isMe={registration.player_id === session.user.id}
+                    showCheckedIn={showCheckedIn}
+                  />
+                ))}
+                {registered.length > visibleRegistered.length
+                  ? renderSeeAll(`Voir les ${registered.length} inscrits`)
+                  : null}
+              </View>
+            )}
           </View>
+
+          {/* Carte Liste d'attente */}
+          {waitlisted.length > 0 || isFull ? (
+            <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
+              <View style={styles.participantsHeader}>
+                <View style={styles.confirmRow}>
+                  <Ionicons name="time-outline" size={16} color={colors.tint} />
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Liste d’attente
+                  </ThemedText>
+                </View>
+                <ThemedText type="smallBold">{waitlisted.length}</ThemedText>
+              </View>
+              <ThemedText type="small" themeColor="textSecondary">
+                Dès qu’une place se libère, le premier de la liste est inscrit automatiquement.
+              </ThemedText>
+
+              {waitlisted.length === 0 ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  Personne n’attend pour l’instant.
+                </ThemedText>
+              ) : !session ? (
+                renderLockedList()
+              ) : (
+                <View style={styles.playerList}>
+                  {visibleWaitlist.map((registration) => (
+                    <PlayerRow
+                      key={registration.id}
+                      registration={registration}
+                      isMe={registration.player_id === session.user.id}
+                      waitlistPosition={
+                        waitlisted.findIndex((r) => r.id === registration.id) + 1
+                      }
+                    />
+                  ))}
+                  {waitlisted.length > visibleWaitlist.length
+                    ? renderSeeAll(`Voir les ${waitlisted.length} joueurs en attente`)
+                    : null}
+                </View>
+              )}
+            </View>
+          ) : null}
         </ScrollView>
         {renderCtaBar()}
       </>
@@ -433,6 +683,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+  },
+  statusBannerTexts: {
+    flex: 1,
+    gap: Spacing.half,
+  },
   card: {
     borderRadius: Spacing.two,
     padding: Spacing.three,
@@ -451,6 +712,32 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 999,
+  },
+  divider: {
+    height: 1,
+    marginVertical: Spacing.one,
+    marginHorizontal: -Spacing.three,
+  },
+  playerList: {
+    gap: Spacing.two,
+  },
+  lockedBlock: {
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
+  },
+  linkButton: {
+    minHeight: 44,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  seeAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.one,
+    minHeight: 44,
+    marginTop: Spacing.one,
   },
   ctaBar: {
     borderTopWidth: 1,
@@ -488,7 +775,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '600',
   },
-  errorBanner: {
+  banner: {
     borderRadius: Spacing.two,
     padding: Spacing.three,
   },

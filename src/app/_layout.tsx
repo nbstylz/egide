@@ -20,6 +20,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="tournois/creer" />
         <Stack.Screen name="evenements/[id]" />
+        <Stack.Screen name="evenements/[id]/inscrits" />
       </Stack>
     </ThemeProvider>
   );

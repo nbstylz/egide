@@ -106,7 +106,10 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   5. Un profil complet (pseudo) est requis pour s'inscrire.
 - **Taille : M** — **Dépendances :** US-2.2.
 
-### US-2.4 — Liste des inscrits et liste d'attente
+### US-2.4 — Liste des inscrits et liste d'attente — ✅ Livrée (2026-07-25)
+> L'inscription passe désormais par les fonctions SQL `register_for_tournament` / `withdraw_from_tournament`, qui verrouillent le tournoi le temps de compter les places : la course à la dernière place signalée en US-2.3 est corrigée.
+> Confidentialité : un visiteur non connecté voit le nombre d'inscrits mais pas les pseudos (garanti par les règles RLS, pas seulement par l'interface).
+> Ajouté hors périmètre initial : bandeau « une place s'est libérée » à l'ouverture de la fiche (colonne `promoted_at`), en attendant les notifications push (US-6.3).
 **En tant que** joueur, **je veux** voir qui est inscrit et être placé en liste d'attente si c'est complet **afin de** ne pas perdre ma place potentielle.
 - Critères :
   1. La fiche événement affiche la liste des inscrits (pseudo, faction favorite).
