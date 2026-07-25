@@ -126,7 +126,11 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   3. Le nombre de résultats est visible ; état vide filtré distinct de l'état vide global.
 - **Taille : M** — **Dépendances :** US-2.1.
 
-### US-2.6 — Gestion des inscrits par l'organisateur
+### US-2.6 — Gestion des inscrits par l'organisateur — ✅ Livrée (2026-07-25)
+> Livrée dans le **back office**, section « Inscrits » d'un tournoi : résumé chiffré, tableau des inscrits, liste d'attente ordonnée, désistements dans une section repliée.
+> Le retrait passe par la fonction SQL `remove_registration`, qui vérifie que l'appelant est l'organisateur puis promeut le premier de la file dans la même transaction.
+> Retrait possible uniquement tant que le tournoi n'est pas lancé ; ensuite la page est en lecture seule (les retraits du jour relèveront du check-in, US-3.1).
+> Reste à faire plus tard : export CSV de la liste (emplacement réservé dans l'en-tête).
 **En tant qu'** organisateur, **je veux** consulter et retirer des inscrits **afin de** gérer les désistements signalés hors app.
 - Critères :
   1. Depuis la fiche de gestion (US-1.4), onglet/section « Inscrits » : inscrits, liste d'attente.

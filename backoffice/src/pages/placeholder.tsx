@@ -1,10 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 
 const Sections: Record<string, { title: string; text: string }> = {
-  inscrits: {
-    title: 'Inscrits',
-    text: 'Vous pourrez consulter et gérer la liste des joueurs inscrits, la liste d’attente et les désistements.',
-  },
   'check-in': {
     title: 'Check-in',
     text: 'Le jour du tournoi, pointez les joueurs présents en quelques secondes.',

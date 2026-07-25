@@ -8,7 +8,7 @@ import { StatusBadge } from './status-badge';
 /** Sections d'un tournoi ; seules les « Bientôt » mènent à un placeholder. */
 const TournamentSections = [
   { path: '', label: 'Général', soon: false },
-  { path: 'inscrits', label: 'Inscrits', soon: true },
+  { path: 'inscrits', label: 'Inscrits', soon: false },
   { path: 'check-in', label: 'Check-in', soon: true },
   { path: 'rondes', label: 'Rondes & scores', soon: true },
   { path: 'listes', label: 'Listes d’armées', soon: true },
@@ -57,6 +57,9 @@ export function Layout({ email, pseudo, tournament, children }: Props) {
                     className={`sidebar-item${active ? ' active' : ''}`}>
                     <span>{section.label}</span>
                     {section.soon ? <span className="badge-soon">Bientôt</span> : null}
+                    {section.path === 'inscrits' && tournament ? (
+                      <span className="badge-soon">{tournament.registered_count}</span>
+                    ) : null}
                   </Link>
                 );
               })}
