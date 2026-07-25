@@ -59,7 +59,9 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   4. Après création (US-1.2), le nouveau tournoi apparaît sans redémarrer l'app.
 - **Taille : S** — **Dépendances :** US-1.2.
 
-### US-1.4 — Fiche de gestion : modifier / annuler
+### US-1.4 — Fiche de gestion : modifier / annuler — ✅ Livrée (2026-07-25)
+> **Livrée dans le BACK OFFICE WEB** (`backoffice/`), pas dans l'app mobile : décision produit du 2026-07-25 — toute la gestion organisateur se fait désormais dans une application web dédiée (Vite + React), l'app mobile gardant le parcours joueur.
+> Reste à faire en v1.1 : formulaire de création de tournoi dans le back office (aujourd'hui un renvoi vers l'app mobile).
 **En tant qu'** organisateur, **je veux** modifier ou annuler mon tournoi **afin de** corriger une erreur ou gérer un imprévu.
 - Critères :
   1. La fiche de gestion affiche toutes les infos et permet la modification tant que le tournoi n'est pas « en cours ».
@@ -384,6 +386,23 @@ Dans l'ordre, chaque étape testable dans le navigateur :
 **Justification :** cette séquence livre le plus court chemin vers un scénario de bout en bout « un organisateur publie, un joueur s'inscrit », prérequis de toute la mécanique des rondes suisses (EPIC-3), qui est le morceau le plus complexe et qu'on abordera avec des fondations éprouvées.
 
 ---
+
+## Architecture : deux applications
+
+Depuis le 2026-07-25, le projet contient deux applications qui partagent le même projet Supabase et les mêmes comptes :
+
+| Application | Dossier | Public | Contenu |
+|---|---|---|---|
+| App mobile EGIDE | racine (`src/`) | Joueurs | Annuaire d'événements, fiche, inscription, profil, équipes |
+| Back office EGIDE | `backoffice/` | Organisateurs | Gestion des tournois : édition, annulation, puis inscrits, check-in, rondes & scores, listes d'armées |
+
+Les US de gestion organisateur (US-1.4, US-2.6, US-3.x, US-5.3) sont donc à réaliser dans le **back office**. Les US joueur (US-2.x, US-4.x) restent dans l'app mobile.
+
+Lancer le back office :
+
+```bash
+npm --prefix backoffice run dev
+```
 
 ## Points d'attention (écarts et risques)
 
