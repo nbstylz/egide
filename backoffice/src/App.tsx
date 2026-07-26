@@ -7,6 +7,7 @@ import { isSupabaseConfigured } from './lib/supabase';
 import { ConnexionPage } from './pages/connexion';
 import { CheckInPage } from './pages/check-in';
 import { InscritsPage } from './pages/inscrits';
+import { RondesPage } from './pages/rondes';
 import { PlaceholderPage } from './pages/placeholder';
 import { TournoiDetailPage } from './pages/tournoi-detail';
 import { TournoisPage } from './pages/tournois';
@@ -37,7 +38,15 @@ function TournoiRoute({
   const { tournament, loading, error, refresh } = useTournament(id);
   return (
     <Layout email={email} pseudo={pseudo} tournament={tournament}>
-      {section === 'check-in' ? (
+      {section === 'rondes' ? (
+        <RondesPage
+          tournament={tournament}
+          tournamentLoading={loading}
+          tournamentError={error}
+          userId={userId}
+          onChanged={refresh}
+        />
+      ) : section === 'check-in' ? (
         <CheckInPage
           tournament={tournament}
           tournamentLoading={loading}

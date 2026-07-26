@@ -663,6 +663,177 @@ a {
   flex-wrap: wrap;
 }
 
+/* ---------- Rondes & appariements ---------- */
+
+.rounds-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--surface-active);
+}
+
+.rounds-tabs {
+  overflow-x: auto;
+}
+
+.input-lg {
+  height: 48px;
+  font-size: 17px;
+  min-width: 280px;
+  flex: 1;
+}
+
+/* Réponse directe à « où joue untel ? » */
+.pairing-answer {
+  font-size: 17px;
+  background: rgba(156, 122, 31, 0.12);
+  border-radius: var(--radius);
+  padding: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pairing-answer {
+    background: rgba(212, 175, 55, 0.14);
+  }
+}
+
+.table-lg td {
+  height: 64px;
+}
+
+.pairing-table-no {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.pairing-row-bye {
+  background: var(--surface);
+}
+
+.badge-bye {
+  color: var(--accent);
+  background: rgba(156, 122, 31, 0.12);
+}
+
+.score-pending {
+  color: var(--text-secondary);
+}
+
+.score-auto {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Affichage projection ---------- */
+
+.projection-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 300;
+  overflow: auto;
+  padding: var(--sp-5);
+}
+
+.projection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+}
+
+.projection-title {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.projection-round {
+  font-size: 24px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.projection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-3);
+}
+
+.projection-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-bottom: 1px solid var(--surface-active);
+}
+
+.projection-table-no {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--accent);
+  width: 72px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.projection-player {
+  font-size: 24px;
+}
+
+.projection-versus {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin: 0 var(--sp-2);
+}
+
+.projection-bye {
+  grid-column: 1 / -1;
+  font-size: 24px;
+  padding: var(--sp-3);
+}
+
+.projection-foot {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: var(--sp-4);
+}
+
+@media (min-width: 1600px) {
+  .projection-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Imprimer la page telle quelle doit rester lisible. */
+@media print {
+  .sidebar,
+  .rounds-bar,
+  .checkin-launch,
+  .details-section,
+  .toast,
+  .projection-head {
+    display: none !important;
+  }
+
+  body,
+  .projection-overlay {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .content {
+    padding: 0 !important;
+  }
+}
+
 /* ---------- Résumé chiffré ---------- */
 
 .stats-row {
@@ -1090,9 +1261,14 @@ a {
   }
 
   .search-input,
-  .checkin-search {
+  .checkin-search,
+  .input-lg {
     width: 100%;
     min-width: 0;
+  }
+
+  .projection-grid {
+    grid-template-columns: 1fr;
   }
 
   .checkin-toolbar {

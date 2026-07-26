@@ -1,10 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 
 const Sections: Record<string, { title: string; text: string }> = {
-  rondes: {
-    title: 'Rondes & scores',
-    text: 'Générez les appariements, saisissez les scores et suivez le classement en direct.',
-  },
   listes: {
     title: 'Listes d’armées',
     text: 'Collectez et validez les listes d’armées des joueurs avant le tournoi.',

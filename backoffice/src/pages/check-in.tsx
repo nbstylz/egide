@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
+import { LaunchTournamentModal } from '../components/launch-tournament-modal';
 import { Modal } from '../components/modal';
 import { Toast } from '../components/toast';
 import type { TournamentWithCount } from '../hooks/use-my-tournaments';
@@ -115,7 +116,9 @@ export function CheckInPage({
   const [toast, setToast] = useState<ToastState | null>(null);
   const [bulkModal, setBulkModal] = useState<'present' | 'reset' | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [launchOpen, setLaunchOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   // Synchronise l'état local avec les données chargées.
   useEffect(() => {
@@ -482,32 +485,63 @@ export function CheckInPage({
         </div>
       )}
 
-      {/* Amorce du lancement (US-3.2) */}
-      {editable && presentCount > 0 ? (
+      {/* Lancement du tournoi : la suite immédiate du pointage */}
+      {editable && registered.length >= 2 ? (
         <div className="checkin-launch">
           <div>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>Pointage terminé ?</div>
-            <p style={{ margin: '4px 0 0' }}>
-              {presentCount} joueur{presentCount > 1 ? 's' : ''} présent
-              {presentCount > 1 ? 's' : ''} ser{presentCount > 1 ? 'ont' : 'a'} apparié
-              {presentCount > 1 ? 's' : ''} à la ronde 1.
-              {todoCount > 0
-                ? ` ${todoCount} joueur${todoCount > 1 ? 's' : ''} non pointé${todoCount > 1 ? 's' : ''} ser${todoCount > 1 ? 'ont' : 'a'} écarté${todoCount > 1 ? 's' : ''} du tournoi.`
-                : ''}
-            </p>
-            {presentCount % 2 === 1 ? (
-              <div className="field-hint" style={{ marginTop: 8 }}>
-                Nombre impair de présents : un joueur aura un bye à chaque ronde.
-              </div>
-            ) : null}
+            <div style={{ fontSize: 18, fontWeight: 600 }}>
+              {presentCount < 2 ? 'Pointage en cours' : 'Pointage terminé ?'}
+            </div>
+            {presentCount < 2 ? (
+              <p style={{ margin: '4px 0 0' }}>
+                Il faut au moins 2 joueurs pointés présents pour lancer le tournoi.
+              </p>
+            ) : (
+              <>
+                <p style={{ margin: '4px 0 0' }}>
+                  {presentCount} joueur{presentCount > 1 ? 's' : ''} présent
+                  {presentCount > 1 ? 's' : ''} ser{presentCount > 1 ? 'ont' : 'a'} apparié
+                  {presentCount > 1 ? 's' : ''} à la ronde 1, sur {Math.floor(presentCount / 2)}{' '}
+                  table{Math.floor(presentCount / 2) > 1 ? 's' : ''}.
+                  {todoCount > 0
+                    ? ` ${todoCount} joueur${todoCount > 1 ? 's' : ''} non pointé${todoCount > 1 ? 's' : ''} ser${todoCount > 1 ? 'ont' : 'a'} écarté${todoCount > 1 ? 's' : ''} du tournoi.`
+                    : ''}
+                </p>
+                {presentCount % 2 === 1 ? (
+                  <div className="field-hint" style={{ marginTop: 8 }}>
+                    Nombre impair de présents : un joueur tiré au sort sera exempt (bye) et
+                    remportera la ronde 15 – 5.
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button className="btn btn-primary" disabled title="Disponible prochainement">
-              Lancer le tournoi
-            </button>
-            <span className="badge-soon">Bientôt</span>
-          </div>
+          <button
+            className="btn btn-primary"
+            style={{ height: 48 }}
+            disabled={presentCount < 2}
+            onClick={() => setLaunchOpen(true)}>
+            Lancer le tournoi
+          </button>
         </div>
+      ) : null}
+
+      {launchOpen && tournament ? (
+        <LaunchTournamentModal
+          tournamentId={tournament.id}
+          presentCount={presentCount}
+          absentNames={registered
+            .filter((r) => !presence[r.id])
+            .map((r) => r.profile?.pseudo ?? 'Joueur')}
+          cancelLabel="Revenir au pointage"
+          onCancel={() => setLaunchOpen(false)}
+          onLaunched={() => {
+            setLaunchOpen(false);
+            onChanged();
+            // On envoie l'organisateur voir les appariements, pas la liste figée.
+            navigate(`/tournois/${tournament.id}/rondes`);
+          }}
+        />
       ) : null}
 
       {/* Liste d'attente, en lecture seule */}

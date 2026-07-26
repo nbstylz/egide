@@ -162,7 +162,11 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   4. Un absent au check-in ne sera pas apparié en ronde 1.
 - **Taille : S** — **Dépendances :** US-2.6.
 
-### US-3.2 — Lancement du tournoi et génération de la ronde 1
+### US-3.2 — Lancement du tournoi et génération de la ronde 1 — ✅ Livrée (2026-07-26)
+> Livrée dans le **back office**. Lancement depuis l'encart en bas de Check-in (voie principale) ou depuis la page Rondes ; modale partagée qui **nomme les joueurs non pointés** qui vont être écartés et exige une case à cocher dans ce cas.
+> Tables `rounds` et `pairings`, fonction `start_tournament` : tirage au sort des présents, attribution des tables, et bye à **15 – 5** conformément à la règle validée. Refus si moins de 2 présents, si l'appelant n'est pas l'organisateur, ou si le tournoi est déjà lancé.
+> Page Rondes : sélecteur des rondes (celles à venir désactivées), synthèse (tables, joueurs appariés, scores saisis), recherche qui répond « X joue à la table N, contre Y », tableau des appariements, ligne du bye triplement signalée, section des joueurs écartés, et affichage projection plein écran + impression.
+> Emplacements réservés pour US-3.4 (saisie des scores) et US-3.6 (ronde suivante).
 **En tant qu'** organisateur, **je veux** lancer le tournoi et générer automatiquement les appariements de la ronde 1 **afin de** démarrer sans tirage manuel.
 - Critères :
   1. Migration : tables `rounds` et `pairings` (ronde, table, joueur A, joueur B, scores, statut) avec RLS.
@@ -423,7 +427,8 @@ npm --prefix backoffice run dev
 
 1. **Notifications push : tension dans le cahier des charges.** La phase 1 inclut « notifications push essentielles », mais la décision produit validée les classe « pas prioritaires ». Le backlog tranche en les plaçant en fin de phase 1 (EPIC-6). De plus, les push exigent un development build (pas Expo Go, pas navigateur) — impact outillage à valider.
 2. **Carte des événements : incohérence de phasage.** Le pilier 2 mentionne « liste + carte », mais la carte interactive est explicitement en phase 3. Le backlog suit le phasage : liste + filtres en MVP (EPIC-2), carte en US-11.2.
-3. **Tie-breakers non spécifiés.** Le cahier des charges dit « à préciser » (SoS, points cumulés…). Question à poser au porteur du projet, expert AOS, avant US-3.7 : ordre exact des départages et barème du bye (points de tournoi et points de partie attribués).
+3. **Barème du bye — TRANCHÉ le 2026-07-26 par le porteur du projet :** un joueur exempt (sans adversaire) remporte sa ronde avec **15 points de partie contre 5** au bye. C'est donc une victoire, avec un écart de 10 points.
+4. **Tie-breakers non spécifiés.** Le cahier des charges dit « à préciser » (SoS, points cumulés…). Question à poser au porteur du projet, expert AOS, avant US-3.7 : ordre exact des départages et barème du bye (points de tournoi et points de partie attribués).
 4. **Protocole d'appariement capitaines non spécifié** (ordre des picks, formats 3 vs 5–8) : à préciser avant la conception de l'EPIC-7.
 5. **README générique.** Le README est encore celui par défaut d'Expo — amélioration non bloquante : le remplacer par une présentation d'EGIDE.
 6. **Saisie des scores par les joueurs eux-mêmes** (avec confirmation de l'adversaire) : pratique courante en tournoi mais absente du cahier des charges. Volontairement exclue du MVP (l'organisateur saisit) — à noter pour une phase ultérieure si souhaité.
