@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { LaunchTournamentModal } from '../components/launch-tournament-modal';
@@ -6,7 +6,16 @@ import { Toast } from '../components/toast';
 import type { TournamentWithCount } from '../hooks/use-my-tournaments';
 import { useRegistrations } from '../hooks/use-registrations';
 import { useRounds, type Pairing } from '../hooks/use-rounds';
+import { useScoreEntry, verdictFor, type Draft } from '../hooks/use-score-entry';
 import { formatEventDateShort } from '../lib/tournaments';
+
+type ScoreFilter = 'all' | 'todo' | 'done';
+
+type ToastState = {
+  message: string;
+  variant?: 'success' | 'danger';
+  action?: { label: string; onPress: () => void };
+};
 
 type Props = {
   tournament: TournamentWithCount | null;
@@ -23,10 +32,18 @@ function normalize(value: string) {
     .toLowerCase();
 }
 
+const isRealTable = (p: Pairing) => p.player_b !== null;
+
 /** Cellule joueur : initiale, pseudo et faction. */
-function PlayerCell({ player }: { player: { pseudo: string; faction_favorite: string | null } }) {
+function PlayerCell({
+  player,
+  won,
+}: {
+  player: { pseudo: string; faction_favorite: string | null };
+  won?: boolean;
+}) {
   return (
-    <div className="reg-cell">
+    <div className={`reg-cell${won ? ' player-win' : ''}`}>
       <span className="reg-avatar">{player.pseudo.charAt(0).toUpperCase()}</span>
       <span>
         <span className="cell-name">{player.pseudo}</span>
@@ -53,46 +70,142 @@ export function RondesPage({
     currentRound,
     selectedNumber,
     setSelectedNumber,
-    scored,
     loading,
     error,
     refresh,
   } = useRounds(tournament?.id);
 
   const [search, setSearch] = useState('');
+  const [scoreFilter, setScoreFilter] = useState<ScoreFilter>('all');
+  const [keptIds, setKeptIds] = useState<Set<string>>(new Set());
   const [launchOpen, setLaunchOpen] = useState(false);
   const [projection, setProjection] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const autoFocusedRound = useRef<string | null>(null);
+  /** Champ à atteindre après le prochain rendu (l'enregistrement recharge la liste). */
+  const pendingFocus = useRef<{ id: string; side: 'a' | 'b' } | null>(null);
 
-  const presentCount = registered.filter((r) => r.status === 'checked_in').length;
-  const absentNames = registered
-    .filter((r) => r.status === 'registered')
-    .map((r) => r.profile?.pseudo ?? 'Joueur');
+  const lastRoundNumber = rounds.length > 0 ? rounds[rounds.length - 1].number : null;
+  // Une ronde suivie d'une autre est figée : la suivante en découle.
+  const editable =
+    tournament?.status === 'in_progress' && selectedNumber === lastRoundNumber;
+
+  const {
+    drafts,
+    saved,
+    busyIds,
+    failedIds,
+    touchedIds,
+    setField,
+    commit,
+    restore,
+    flush,
+    markTouched,
+    focusField,
+    registerInput,
+  } = useScoreEntry({
+    pairings,
+    editable,
+    onSaved: (pairing, previous, next, wasFilled) => {
+      if (wasFilled) {
+        setToast({
+          message: `Table ${pairing.table_number} corrigée : ${next.a} – ${next.b}.`,
+          action: { label: 'Annuler', onPress: () => restore(pairing, previous) },
+        });
+      }
+      // Pas de rechargement ici : l'état confirmé suffit, et recharger
+      // ferait clignoter le tableau en pleine saisie.
+    },
+    onFailed: (pairing, retry) => {
+      setToast({
+        message: `Score de la table ${pairing.table_number} non enregistré. Vérifiez votre connexion.`,
+        variant: 'danger',
+        action: { label: 'Réessayer', onPress: retry },
+      });
+    },
+  });
+
+  /** Une table est saisie quand ses deux scores sont confirmés côté serveur. */
+  const isScored = (p: Pairing) => {
+    const value = saved[p.id];
+    return Boolean(value && value.a !== '' && value.b !== '');
+  };
+  const realTables = pairings.filter(isRealTable);
+  const scoredTables = realTables.filter(isScored);
+  const todoTables = realTables.filter((p) => !isScored(p));
+  const byePairing = pairings.find((p) => !isRealTable(p)) ?? null;
+
+  // Au premier affichage d'une ronde modifiable, on se place sur la première
+  // table sans score : l'organisateur peut saisir sans toucher la souris.
+  useEffect(() => {
+    if (!editable || !currentRound) return;
+    if (autoFocusedRound.current === currentRound.id) return;
+    // Tant que les scores connus ne sont pas chargés, toutes les tables
+    // paraissent vides : on se poserait sur une table déjà saisie.
+    if (pairings.length > 0 && Object.keys(saved).length === 0) return;
+    const first = pairings.find((p) => isRealTable(p) && !isScored(p));
+    if (first) {
+      autoFocusedRound.current = currentRound.id;
+      focusField(first.id, 'a');
+    }
+  }, [editable, currentRound, pairings, focusField]);
+
+  // Repose le focus demandé une fois la liste rechargée.
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (!target) return;
+    pendingFocus.current = null;
+    focusField(target.id, target.side);
+  });
 
   const filtered = useMemo(() => {
     const needle = normalize(search.trim());
-    if (!needle) return pairings;
-    return pairings.filter((p) => {
-      const haystack = normalize(
-        `${p.player_a?.pseudo ?? ''} ${p.player_b?.pseudo ?? ''} ${p.table_number}`
-      );
-      return haystack.includes(needle);
+    return pairings.filter((pairing) => {
+      if (needle) {
+        const haystack = normalize(
+          `${pairing.player_a?.pseudo ?? ''} ${pairing.player_b?.pseudo ?? ''} ${pairing.table_number}`
+        );
+        if (!haystack.includes(needle)) return false;
+      }
+      if (scoreFilter === 'all') return true;
+      // Le bye n'est ni à saisir ni saisi par l'organisateur.
+      if (!isRealTable(pairing)) return scoreFilter === 'done';
+      if (keptIds.has(pairing.id)) return true;
+      return scoreFilter === 'todo' ? !isScored(pairing) : isScored(pairing);
     });
-  }, [pairings, search]);
+  }, [pairings, search, scoreFilter, keptIds]);
 
-  /** Phrase de réponse quand la recherche ne laisse qu'un appariement. */
-  function answerFor(pairing: Pairing): string | null {
-    const needle = normalize(search.trim());
-    if (!needle) return null;
-    const a = pairing.player_a?.pseudo ?? '';
-    const b = pairing.player_b?.pseudo ?? '';
-    if (!pairing.player_b) {
-      return `${a} est exempt cette ronde (bye). Il ne joue pas.`;
+  function clearKept() {
+    if (keptIds.size > 0) setKeptIds(new Set());
+  }
+
+  /**
+   * Table suivante encore à saisir, en repartant du haut au besoin.
+   * Le focus est demandé pour après le rendu : l'enregistrement recharge la
+   * liste, ce qui effacerait un focus posé tout de suite.
+   */
+  function queueNextTodo(fromId: string) {
+    const order = pairings.filter(isRealTable);
+    const start = order.findIndex((p) => p.id === fromId);
+    for (let step = 1; step <= order.length; step += 1) {
+      const candidate = order[(start + step) % order.length];
+      const draft = drafts[candidate.id];
+      if (candidate.id !== fromId && draft && (draft.a === '' || draft.b === '')) {
+        pendingFocus.current = { id: candidate.id, side: 'a' };
+        focusField(candidate.id, 'a');
+        return;
+      }
     }
-    // On nomme d'abord le joueur cherché.
-    const asked = normalize(b).includes(needle) ? b : a;
-    const other = asked === a ? b : a;
-    return `${asked} joue à la table ${pairing.table_number}, contre ${other}.`;
+    setToast({ message: 'Toutes les tables sont saisies.', variant: 'success' });
+  }
+
+  /** Flèches haut/bas : même colonne, ligne voisine. */
+  function focusNeighbour(fromId: string, side: 'a' | 'b', direction: -1 | 1) {
+    const order = pairings.filter(isRealTable);
+    const index = order.findIndex((p) => p.id === fromId);
+    const target = order[index + direction];
+    if (target) focusField(target.id, side);
   }
 
   if (tournamentLoading || loading || regLoading) {
@@ -102,7 +215,7 @@ export function RondesPage({
         <div className="skeleton" style={{ height: 96, marginTop: 24 }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginTop: 24 }}>
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="skeleton" style={{ height: 64 }} />
+            <div key={i} className="skeleton" style={{ height: 72 }} />
           ))}
         </div>
       </>
@@ -163,6 +276,7 @@ export function RondesPage({
 
   // Avant lancement : la page propose de démarrer.
   if (tournament.status === 'open') {
+    const presentCount = registered.filter((r) => r.status === 'checked_in').length;
     const fillPercent = registered.length
       ? Math.round((presentCount / registered.length) * 100)
       : 0;
@@ -188,9 +302,7 @@ export function RondesPage({
           </div>
           <div className="stat-card">
             <div className="stat-value">{tournament.rounds_count}</div>
-            <div className="stat-label">
-              rondes prévues · {tournament.points_limit} points
-            </div>
+            <div className="stat-label">rondes prévues · {tournament.points_limit} points</div>
           </div>
         </div>
         <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -211,20 +323,30 @@ export function RondesPage({
           <LaunchTournamentModal
             tournamentId={tournament.id}
             presentCount={presentCount}
-            absentNames={absentNames}
+            absentNames={registered
+              .filter((r) => r.status === 'registered')
+              .map((r) => r.profile?.pseudo ?? 'Joueur')}
             cancelLabel="Annuler"
             onCancel={() => setLaunchOpen(false)}
             onLaunched={async () => {
               setLaunchOpen(false);
               onChanged();
               await Promise.all([refresh(), refreshRegistrations()]);
-              setToast(
-                `Tournoi lancé. Ronde 1 générée sur ${Math.floor(presentCount / 2)} tables.`
-              );
+              setToast({
+                message: `Tournoi lancé. Ronde 1 générée sur ${Math.floor(presentCount / 2)} tables.`,
+              });
             }}
           />
         ) : null}
-        {toast ? <Toast message={toast} duration={6000} onDone={() => setToast(null)} /> : null}
+        {toast ? (
+          <Toast
+            message={toast.message}
+            variant={toast.variant}
+            action={toast.action}
+            duration={6000}
+            onDone={() => setToast(null)}
+          />
+        ) : null}
       </>
     );
   }
@@ -247,11 +369,36 @@ export function RondesPage({
     );
   }
 
-  const byePairing = pairings.find((p) => p.player_b === null) ?? null;
-  const realTables = pairings.filter((p) => p.player_b !== null).length;
-  const playersPaired = realTables * 2 + (byePairing ? 1 : 0);
+  /** Réponse directe quand la recherche ne laisse qu'un appariement. */
+  function answerFor(pairing: Pairing): string {
+    const needle = normalize(search.trim());
+    const a = pairing.player_a?.pseudo ?? '';
+    const b = pairing.player_b?.pseudo ?? '';
+    if (!pairing.player_b) return `${a} est exempt cette ronde (bye). Il ne joue pas.`;
+    const asked = normalize(b).includes(needle) ? b : a;
+    const other = asked === a ? b : a;
+    return `${asked} joue à la table ${pairing.table_number}, contre ${other}.`;
+  }
+
   const singleAnswer = search.trim() !== '' && filtered.length === 1 ? answerFor(filtered[0]) : null;
   const discarded = registered.filter((r) => r.status === 'registered');
+  const allScored = todoTables.length === 0 && realTables.length > 0;
+  const keptVisible = [...keptIds].filter((id) => realTables.some((p) => p.id === id)).length;
+
+  /** Hint sous la recherche : ce que fera la touche Entrée. */
+  let searchHint = '';
+  if (search.trim() !== '' && filtered.length === 1) {
+    const only = filtered[0];
+    if (!isRealTable(only)) {
+      searchHint = `${only.player_a?.pseudo} est exempt, aucun score à saisir`;
+    } else if (editable) {
+      searchHint = isScored(only)
+        ? `Entrée pour corriger la table ${only.table_number}`
+        : `Entrée pour saisir la table ${only.table_number}`;
+    }
+  } else if (search.trim() !== '' && filtered.length > 1) {
+    searchHint = `${filtered.length} tables correspondent, précisez`;
+  }
 
   return (
     <>
@@ -280,7 +427,11 @@ export function RondesPage({
                       ? undefined
                       : 'Cette ronde sera générée à la fin de la ronde précédente.'
                   }
-                  onClick={() => setSelectedNumber(number)}>
+                  onClick={async () => {
+                    await flush();
+                    clearKept();
+                    setSelectedNumber(number);
+                  }}>
                   Ronde {number}
                 </button>
               );
@@ -290,41 +441,98 @@ export function RondesPage({
 
         <div className="stats-row">
           <div className="stat-card">
-            <div className="stat-value">{realTables}</div>
+            <div className="stat-value">{realTables.length}</div>
             <div className="stat-label">tables</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value">{playersPaired}</div>
+            <div className="stat-value">{realTables.length * 2 + (byePairing ? 1 : 0)}</div>
             <div className="stat-label">joueurs appariés</div>
           </div>
           <div className="stat-card">
             <div className="stat-value">
-              {scored} / {pairings.length}
+              {scoredTables.length} / {realTables.length}
             </div>
-            <div className="stat-label">scores saisis</div>
+            <div className="stat-label">tables saisies</div>
             <div className="mini-gauge">
               <div
-                className="mini-gauge-fill"
+                className={`mini-gauge-fill${allScored ? ' full' : ''}`}
                 style={{
-                  width: `${pairings.length ? Math.round((scored / pairings.length) * 100) : 0}%`,
+                  width: `${realTables.length ? Math.round((scoredTables.length / realTables.length) * 100) : 0}%`,
                 }}
               />
+            </div>
+            <div
+              className="stat-label"
+              aria-live="polite"
+              style={allScored ? { color: 'var(--success)' } : undefined}>
+              {allScored
+                ? 'Toutes les tables sont saisies'
+                : `${todoTables.length} table${todoTables.length > 1 ? 's' : ''} reste${todoTables.length > 1 ? 'nt' : ''} à saisir`}
             </div>
           </div>
         </div>
 
         <div className="checkin-toolbar">
-          <input
-            type="search"
-            autoComplete="off"
-            className="input input-lg"
-            placeholder="Rechercher un joueur ou un numéro de table"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') setSearch('');
-            }}
-          />
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <input
+              ref={searchRef}
+              type="search"
+              autoComplete="off"
+              className="input input-lg"
+              style={{ width: '100%' }}
+              placeholder="Rechercher un joueur ou un numéro de table"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setSearch('');
+                if (event.key === 'Enter' && filtered.length === 1 && editable) {
+                  const only = filtered[0];
+                  if (isRealTable(only)) {
+                    event.preventDefault();
+                    focusField(only.id, 'a');
+                  }
+                }
+              }}
+            />
+            {searchHint ? (
+              <div className="field-hint" style={{ marginTop: 4 }}>
+                {searchHint}
+              </div>
+            ) : null}
+          </div>
+
+          {editable ? (
+            <div className="segmented" style={{ alignSelf: 'flex-start' }}>
+              <button
+                type="button"
+                className={scoreFilter === 'all' ? 'active' : ''}
+                onClick={() => {
+                  setScoreFilter('all');
+                  clearKept();
+                }}>
+                Toutes ({realTables.length})
+              </button>
+              <button
+                type="button"
+                className={scoreFilter === 'todo' ? 'active' : ''}
+                onClick={() => {
+                  setScoreFilter('todo');
+                  clearKept();
+                }}>
+                À saisir ({todoTables.length})
+              </button>
+              <button
+                type="button"
+                className={scoreFilter === 'done' ? 'active' : ''}
+                onClick={() => {
+                  setScoreFilter('done');
+                  clearKept();
+                }}>
+                Saisies ({scoredTables.length})
+              </button>
+            </div>
+          ) : null}
+
           <button className="btn btn-secondary" onClick={() => setProjection(true)}>
             Affichage projection
           </button>
@@ -333,7 +541,14 @@ export function RondesPage({
 
       {singleAnswer ? <div className="pairing-answer">{singleAnswer}</div> : null}
 
-      {byePairing && search.trim() === '' ? (
+      {!editable && tournament.status !== 'completed' && currentRound ? (
+        <div className="banner banner-info" style={{ margin: '16px 0', maxWidth: 640 }}>
+          🔒 Ronde {selectedNumber} clôturée : les scores ne sont plus modifiables. La ronde{' '}
+          {(selectedNumber ?? 1) + 1} a été générée à partir de ces résultats.
+        </div>
+      ) : null}
+
+      {byePairing && search.trim() === '' && scoreFilter !== 'todo' ? (
         <div className="banner banner-info" style={{ margin: '16px 0', maxWidth: 640 }}>
           Nombre impair de présents : {byePairing.player_a?.pseudo} est exempt à la ronde{' '}
           {selectedNumber} (bye). Sa victoire est déjà enregistrée : 15 – 5. Ce n’est pas une
@@ -348,6 +563,13 @@ export function RondesPage({
               <p>Aucun joueur ne correspond à « {search} ».</p>
               <button className="btn btn-secondary" onClick={() => setSearch('')}>
                 Effacer la recherche
+              </button>
+            </>
+          ) : scoreFilter === 'todo' ? (
+            <>
+              <p>Toutes les tables ont un score.</p>
+              <button className="btn btn-secondary" onClick={() => setScoreFilter('all')}>
+                Voir toutes les tables
               </button>
             </>
           ) : (
@@ -366,43 +588,167 @@ export function RondesPage({
               <th style={{ width: 72 }}>Table</th>
               <th>Joueur A</th>
               <th>Joueur B</th>
-              <th className="hide-narrow cell-actions" style={{ width: 120 }}>
-                Score
-              </th>
+              <th style={{ width: 200 }}>Score</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((pairing) => {
-              const isBye = pairing.player_b === null;
+              const bye = !isRealTable(pairing);
+              const draft: Draft = drafts[pairing.id] ?? { a: '', b: '' };
+              const verdict = verdictFor(pairing, draft, touchedIds.has(pairing.id));
+              const scored = isScored(pairing);
+
+              const rowClass = [
+                bye ? 'pairing-row-bye' : '',
+                !bye && scored ? 'score-row-done' : '',
+                busyIds.has(pairing.id) ? 'score-row-busy' : '',
+                failedIds.has(pairing.id) ? 'score-row-failed' : '',
+              ]
+                .filter(Boolean)
+                .join(' ');
+
+              const winner = verdict.kind === 'win' ? verdict.winner : null;
+
               return (
-                <tr key={pairing.id} className={isBye ? 'pairing-row-bye' : ''}>
+                <tr key={pairing.id} className={rowClass}>
                   <td>
-                    {isBye ? (
+                    {bye ? (
                       <span className="checkin-meta">—</span>
                     ) : (
                       <span className="pairing-table-no">{pairing.table_number}</span>
                     )}
                   </td>
-                  <td>{pairing.player_a ? <PlayerCell player={pairing.player_a} /> : '—'}</td>
                   <td>
-                    {isBye ? (
-                      <span className="badge badge-bye">Exempt (bye)</span>
+                    {pairing.player_a ? (
+                      <PlayerCell player={pairing.player_a} won={winner === 'a'} />
                     ) : (
-                      <PlayerCell player={pairing.player_b!} />
+                      '—'
                     )}
                   </td>
-                  <td className="hide-narrow cell-actions">
-                    {pairing.score_a !== null && pairing.score_b !== null ? (
+                  <td>
+                    {bye ? (
+                      <span className="badge badge-bye">Exempt (bye)</span>
+                    ) : (
+                      <PlayerCell player={pairing.player_b!} won={winner === 'b'} />
+                    )}
+                  </td>
+                  <td className="cell-score">
+                    {bye ? (
                       <>
                         <span className="score-auto">
                           {pairing.score_a} – {pairing.score_b}
                         </span>
-                        {isBye ? (
-                          <>
-                            <br />
-                            <span className="checkin-meta">Attribué automatiquement</span>
-                          </>
-                        ) : null}
+                        <div className="checkin-meta">Attribué automatiquement</div>
+                      </>
+                    ) : editable ? (
+                      <>
+                        <div className="score-inputs">
+                          {(['a', 'b'] as const).map((side) => (
+                            <span key={side} style={{ display: 'contents' }}>
+                              {side === 'b' ? <span className="score-dash">–</span> : null}
+                              <input
+                                ref={(element) => registerInput(`${pairing.id}-${side}`, element)}
+                                className={[
+                                  'score-input',
+                                  winner === side ? 'win' : '',
+                                  verdict.kind === 'unusual' ? 'warn' : '',
+                                  verdict.kind === 'missing' && verdict.side === side
+                                    ? 'missing'
+                                    : '',
+                                ]
+                                  .filter(Boolean)
+                                  .join(' ')}
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                maxLength={3}
+                                autoComplete="off"
+                                aria-label={`Points de ${
+                                  side === 'a'
+                                    ? (pairing.player_a?.pseudo ?? 'joueur A')
+                                    : (pairing.player_b?.pseudo ?? 'joueur B')
+                                }, table ${pairing.table_number}`}
+                                value={draft[side]}
+                                onFocus={(event) => event.target.select()}
+                                onChange={(event) => setField(pairing.id, side, event.target.value)}
+                                onBlur={(event) => {
+                                  markTouched(pairing.id);
+                                  // On n'enregistre que si le focus quitte la ligne.
+                                  const next = event.relatedTarget as HTMLElement | null;
+                                  const stays =
+                                    next?.getAttribute('aria-label')?.includes(
+                                      `table ${pairing.table_number}`
+                                    ) ?? false;
+                                  if (!stays) commit(pairing);
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    if (side === 'a') {
+                                      focusField(pairing.id, 'b');
+                                    } else {
+                                      markTouched(pairing.id);
+                                      commit(pairing);
+                                      if (scoreFilter !== 'all') {
+                                        setKeptIds((current) =>
+                                          new Set(current).add(pairing.id)
+                                        );
+                                      }
+                                      queueNextTodo(pairing.id);
+                                    }
+                                  }
+                                  if (event.key === 'Escape') {
+                                    event.preventDefault();
+                                    setField(pairing.id, 'a', String(pairing.score_a ?? ''));
+                                    setField(pairing.id, 'b', String(pairing.score_b ?? ''));
+                                    (event.target as HTMLInputElement).blur();
+                                  }
+                                  if (event.key === 'ArrowDown') {
+                                    event.preventDefault();
+                                    focusNeighbour(pairing.id, side, 1);
+                                  }
+                                  if (event.key === 'ArrowUp') {
+                                    event.preventDefault();
+                                    focusNeighbour(pairing.id, side, -1);
+                                  }
+                                }}
+                              />
+                            </span>
+                          ))}
+                        </div>
+                        <div
+                          className={`score-verdict${
+                            verdict.kind === 'draw'
+                              ? ' draw'
+                              : verdict.kind === 'missing' || verdict.kind === 'unusual'
+                                ? ' warn'
+                                : ''
+                          }`}>
+                          {verdict.kind === 'win'
+                            ? `Victoire ${verdict.pseudo}`
+                            : verdict.kind === 'draw'
+                              ? 'Égalité'
+                              : verdict.kind === 'missing'
+                                ? `Saisissez aussi les points de ${verdict.pseudo}.`
+                                : verdict.kind === 'unusual'
+                                  ? 'Score inhabituel (au-delà de 20). Vérifiez la feuille.'
+                                  : ' '}
+                        </div>
+                      </>
+                    ) : scored ? (
+                      <>
+                        <span className="score-auto">
+                          {pairing.score_a} – {pairing.score_b}
+                        </span>
+                        <div className="checkin-meta">
+                          {pairing.score_a === pairing.score_b
+                            ? 'Égalité'
+                            : `Victoire ${
+                                (pairing.score_a ?? 0) > (pairing.score_b ?? 0)
+                                  ? pairing.player_a?.pseudo
+                                  : pairing.player_b?.pseudo
+                              }`}
+                        </div>
                       </>
                     ) : (
                       <span className="score-pending">— · —</span>
@@ -415,23 +761,62 @@ export function RondesPage({
         </table>
       )}
 
-      {/* Suite du tournoi : place réservée aux US suivantes */}
+      {keptVisible > 0 && scoreFilter !== 'all' ? (
+        <button
+          className="btn btn-secondary btn-sm"
+          style={{ marginTop: 16 }}
+          onClick={clearKept}>
+          Masquer les {keptVisible} table{keptVisible > 1 ? 's' : ''} saisie
+          {keptVisible > 1 ? 's' : ''}
+        </button>
+      ) : null}
+
+      {editable ? (
+        <div className="field-hint" style={{ marginTop: 16 }}>
+          Tab pour passer d’un champ à l’autre, Entrée pour valider et passer à la table suivante,
+          Échap pour annuler la ligne.
+        </div>
+      ) : null}
+
+      {/* Suite du tournoi : place réservée à la clôture (US-3.6) */}
       {tournament.status !== 'completed' ? (
         <div className="checkin-launch">
           <div>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>Ronde {selectedNumber} en cours</div>
-            <p style={{ margin: '4px 0 0' }}>
-              Quand les {realTables} table{realTables > 1 ? 's' : ''} auront un score, vous pourrez
-              clôturer la ronde et générer la ronde {(selectedNumber ?? 1) + 1}.
-            </p>
-            <div className="field-hint" style={{ marginTop: 8 }}>
-              La saisie des scores, le classement et les abandons arrivent dans une prochaine mise
-              à jour.
+            <div style={{ fontSize: 18, fontWeight: 600 }}>
+              Ronde {selectedNumber} {allScored ? 'complète' : 'en cours'}
             </div>
+            {allScored ? (
+              <>
+                <p style={{ margin: '4px 0 0' }}>
+                  Les {realTables.length} tables ont un score. Vous pourrez clôturer la ronde et
+                  générer la ronde {(selectedNumber ?? 1) + 1}.
+                </p>
+                <div className="field-hint" style={{ marginTop: 8 }}>
+                  Un score reste modifiable tant que la ronde suivante n’est pas générée.
+                </div>
+              </>
+            ) : (
+              <p style={{ margin: '4px 0 0' }}>
+                {todoTables.length} table{todoTables.length > 1 ? 's' : ''} sur{' '}
+                {realTables.length} n’{todoTables.length > 1 ? 'ont' : 'a'} pas encore de score.
+              </p>
+            )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button className="btn btn-secondary" disabled title="Disponible prochainement">
-              Saisir les scores
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {!allScored && editable && todoTables.length > 0 ? (
+              <button
+                className="btn btn-secondary"
+                onClick={() => focusField(todoTables[0].id, 'a')}>
+                Aller à la première table sans score
+              </button>
+            ) : null}
+            <button
+              className="btn btn-primary"
+              disabled
+              title={
+                allScored ? 'Disponible prochainement' : 'Saisissez d’abord tous les scores'
+              }>
+              Clôturer la ronde
             </button>
             <span className="badge-soon">Bientôt</span>
           </div>
@@ -499,18 +884,16 @@ export function RondesPage({
             </div>
           </div>
           <div className="projection-grid">
-            {pairings
-              .filter((p) => p.player_b !== null)
-              .map((pairing) => (
-                <div key={pairing.id} className="projection-item">
-                  <span className="projection-table-no">{pairing.table_number}</span>
-                  <span className="projection-player">
-                    {pairing.player_a?.pseudo}{' '}
-                    <span className="projection-versus">contre</span>{' '}
-                    {pairing.player_b?.pseudo}
-                  </span>
-                </div>
-              ))}
+            {realTables.map((pairing) => (
+              <div key={pairing.id} className="projection-item">
+                <span className="projection-table-no">{pairing.table_number}</span>
+                <span className="projection-player">
+                  {pairing.player_a?.pseudo}{' '}
+                  <span className="projection-versus">contre</span>{' '}
+                  {pairing.player_b?.pseudo}
+                </span>
+              </div>
+            ))}
             {byePairing ? (
               <div className="projection-bye">
                 Exempt (bye) : {byePairing.player_a?.pseudo} — victoire 15 – 5
@@ -529,7 +912,15 @@ export function RondesPage({
         </div>
       ) : null}
 
-      {toast ? <Toast message={toast} duration={6000} onDone={() => setToast(null)} /> : null}
+      {toast ? (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          action={toast.action}
+          duration={6000}
+          onDone={() => setToast(null)}
+        />
+      ) : null}
     </>
   );
 }

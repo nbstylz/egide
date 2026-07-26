@@ -184,7 +184,13 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   4. Lecture seule pour les joueurs.
 - **Taille : S** — **Dépendances :** US-3.2.
 
-### US-3.4 — Saisie des scores par l'organisateur
+### US-3.4 — Saisie des scores par l'organisateur — ✅ Livrée (2026-07-26)
+> Saisie directement dans le tableau de la page Rondes, pensée pour le clavier : deux champs par table, `Entrée` passe au champ suivant puis à la table suivante encore à saisir, `Échap` annule la ligne, flèches haut/bas pour changer de ligne.
+> Le vainqueur est déduit en direct (« Victoire X » / « Égalité ») dès que les deux champs sont remplis, avant enregistrement — c'est là que la faute de frappe se voit.
+> Enregistrement quand la ligne complète perd le focus, sans recharger le tableau (sinon il clignote et le focus saute). Filtre « À saisir / Saisies » avec maintien de la ligne qu'on vient de saisir.
+> Validation : lettres ignorées, au-delà de 100 refusé, au-delà de 20 accepté mais signalé (certains formats montent plus haut), saisie d'un seul côté non enregistrée.
+> La fonction SQL refuse la saisie hors organisateur, sur le bye, hors tournoi en cours, et **fige une ronde dès que la suivante est générée**.
+> Reste à faire : sauvegarde locale des brouillons non confirmés (filet en cas de coupure réseau en pleine saisie).
 **En tant qu'** organisateur, **je veux** saisir le résultat de chaque table **afin de** préparer la ronde suivante.
 - Critères :
   1. Pour chaque appariement : saisie des points de partie de chaque joueur ; le vainqueur (ou l'égalité) est déduit automatiquement.
