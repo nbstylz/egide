@@ -524,6 +524,145 @@ a {
   }
 }
 
+/* ---------- Check-in ---------- */
+
+.checkin-summary {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--surface-active);
+}
+
+.checkin-count {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.checkin-toolbar {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-top: var(--sp-3);
+}
+
+.checkin-search {
+  height: 48px;
+  font-size: 17px;
+  min-width: 280px;
+  flex: 1;
+}
+
+.mini-gauge-fill.present {
+  background: var(--success);
+}
+
+.checkin-list {
+  margin-top: var(--sp-3);
+  border-top: 1px solid var(--surface-active);
+}
+
+/* Toute la ligne est la cible : on pointe debout, vite, sans viser. */
+.checkin-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  height: 64px;
+  padding: 0 var(--sp-3);
+  border: none;
+  border-bottom: 1px solid var(--surface-active);
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.checkin-row:hover {
+  background: var(--surface);
+}
+
+.checkin-row.present {
+  background: var(--success-bg);
+}
+
+.checkin-row.busy {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.checkin-row.failed {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.checkin-row.readonly {
+  cursor: default;
+}
+
+.checkin-row.readonly:hover {
+  background: var(--bg);
+}
+
+.checkin-row.readonly.present:hover {
+  background: var(--success-bg);
+}
+
+.checkin-box {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  border: 2px solid var(--surface-active);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.checkin-box.checked {
+  background: var(--success);
+  border-color: var(--success);
+  color: #ffffff;
+}
+
+.checkin-name {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.checkin-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.checkin-state {
+  font-size: 15px;
+  margin-left: auto;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.checkin-state.present {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.checkin-launch {
+  margin-top: var(--sp-5);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: var(--sp-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
 /* ---------- Résumé chiffré ---------- */
 
 .stats-row {
@@ -858,6 +997,25 @@ a {
   font-size: 15px;
   max-width: 360px;
   z-index: 200;
+  display: flex;
+  align-items: center;
+}
+
+.toast-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.toast-action {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  margin-left: var(--sp-3);
+  white-space: nowrap;
 }
 
 /* ---------- États ---------- */
@@ -931,7 +1089,19 @@ a {
     display: none;
   }
 
-  .search-input {
+  .search-input,
+  .checkin-search {
     width: 100%;
+    min-width: 0;
+  }
+
+  .checkin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .checkin-launch {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

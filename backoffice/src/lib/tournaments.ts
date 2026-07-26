@@ -49,6 +49,9 @@ export const CancellableStatuses: TournamentStatus[] = ['draft', 'open', 'in_pro
  */
 export const RemovableStatuses: TournamentStatus[] = ['draft', 'open'];
 
+/** Statuts pour lesquels le pointage des présents est modifiable. */
+export const CheckInEditableStatuses: TournamentStatus[] = ['open'];
+
 export type RegistrationStatus = 'registered' | 'waitlisted' | 'withdrawn' | 'checked_in';
 
 /** Statuts d'inscription qui occupent réellement une place. */

@@ -148,7 +148,12 @@ EGIDE est l'application de référence de la scène compétitive francophone War
 **Objectif :** le cœur différenciant du MVP — dérouler un tournoi complet, des appariements automatiques au classement final.
 **Valeur utilisateur :** l'organisateur gagne un temps énorme entre les rondes ; les joueurs voient leur table et le classement en direct sur leur téléphone.
 
-### US-3.1 — Check-in le jour J
+### US-3.1 — Check-in le jour J — ✅ Livrée (2026-07-26)
+> Livrée dans le **back office**, section « Check-in ». Page mono-tâche pensée pour un usage debout : toute la ligne du joueur est la cible (64 px), recherche toujours visible avec validation au clavier, et pointage appliqué immédiatement à l'écran sans attendre le réseau.
+> Chaque pointage est annulable depuis le message de confirmation ; en cas d'échec réseau la ligne revient à son état précédent avec un signal rouge, jamais d'échec silencieux.
+> Actions groupées (« tout marquer présent », « réinitialiser ») reléguées dans une section repliée, loin de la zone de pointage rapide.
+> La base refuse tout pointage si l'appelant n'est pas l'organisateur, si le tournoi n'est plus ouvert, ou si le joueur est en liste d'attente.
+> Emplacement du bouton « Lancer le tournoi » réservé pour US-3.2, avec le rappel explicite que les joueurs non pointés seront écartés.
 **En tant qu'** organisateur, **je veux** pointer les présents le matin du tournoi **afin de** n'apparier que les joueurs réellement là.
 - Critères :
   1. Sur la fiche de gestion, un mode « Check-in » liste les inscrits avec une case présent/absent.

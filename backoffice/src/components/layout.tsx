@@ -9,7 +9,7 @@ import { StatusBadge } from './status-badge';
 const TournamentSections = [
   { path: '', label: 'Général', soon: false },
   { path: 'inscrits', label: 'Inscrits', soon: false },
-  { path: 'check-in', label: 'Check-in', soon: true },
+  { path: 'check-in', label: 'Check-in', soon: false },
   { path: 'rondes', label: 'Rondes & scores', soon: true },
   { path: 'listes', label: 'Listes d’armées', soon: true },
 ];

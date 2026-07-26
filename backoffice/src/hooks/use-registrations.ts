@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { supabase } from '../lib/supabase';
 import { ActiveRegistrationStatuses, type RegistrationStatus } from '../lib/tournaments';
@@ -56,11 +56,21 @@ export function useRegistrations(tournamentId: string | undefined) {
     refresh();
   }, [refresh]);
 
-  const registered = rows
-    .filter((r) => ActiveRegistrationStatuses.includes(r.status))
-    .sort(byPseudo);
-  const waitlisted = rows.filter((r) => r.status === 'waitlisted').sort(byArrival);
-  const withdrawn = rows.filter((r) => r.status === 'withdrawn').sort(byArrival);
+  // Listes mémoïsées : sans cela leur identité changerait à chaque rendu, ce
+  // qui relancerait en boucle les effets qui en dépendent (le pointage local
+  // de la page Check-in serait écrasé aussitôt posé).
+  const registered = useMemo(
+    () => rows.filter((r) => ActiveRegistrationStatuses.includes(r.status)).sort(byPseudo),
+    [rows]
+  );
+  const waitlisted = useMemo(
+    () => rows.filter((r) => r.status === 'waitlisted').sort(byArrival),
+    [rows]
+  );
+  const withdrawn = useMemo(
+    () => rows.filter((r) => r.status === 'withdrawn').sort(byArrival),
+    [rows]
+  );
 
   return { registered, waitlisted, withdrawn, loading, error, refresh };
 }
