@@ -118,7 +118,10 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   4. Cas testable : capacité 2, trois inscriptions, le 3e est en attente ; désinscription du 1er → le 3e devient inscrit.
 - **Taille : M** — **Dépendances :** US-2.3.
 
-### US-2.5 — Filtres de l'annuaire
+### US-2.5 — Filtres de l'annuaire — ✅ Livrée (2026-07-26)
+> Barre « Filtrer » (44 px) + modale plein écran + chips des filtres actifs, filtrage entièrement côté client.
+> Les régions et les formats étant du texte libre, les options sont construites à partir des tournois réellement présents, avec regroupement des graphies (accents, casse, tirets) et compteurs recalculés en continu ; une option sans résultat reste visible mais désactivée.
+> Régions, formats et type sont conservés d'une visite à l'autre ; la période repart toujours de « À venir » (une période enregistrée devient fausse avec le temps).
 **En tant que** joueur, **je veux** filtrer les événements par date, région, format et type **afin de** trouver vite ce qui me concerne.
 - Critères :
   1. Filtres : région (mêmes valeurs que le profil), période (à venir / ce mois / date précise), type individuel/équipe, format en points.

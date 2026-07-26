@@ -19,32 +19,11 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
+import { maskDateInput, parseFrenchDate } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 const ErrorColor = { light: '#D14343', dark: '#FF6369' };
 const PointsPresets = [1000, 1500, 2000] as const;
-
-/** « JJ/MM/AAAA » → « AAAA-MM-JJ », ou null si la date est invalide. */
-function parseFrenchDate(text: string): string | null {
-  const match = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!match) return null;
-  const [, day, month, year] = match;
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
-  const valid =
-    date.getFullYear() === Number(year) &&
-    date.getMonth() === Number(month) - 1 &&
-    date.getDate() === Number(day);
-  if (!valid) return null;
-  return `${year}-${month}-${day}`;
-}
-
-/** Insère automatiquement les « / » pendant la saisie de la date. */
-function maskDateInput(text: string): string {
-  const digits = text.replace(/[^0-9]/g, '').slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-}
 
 export default function CreerTournoiScreen() {
   const scheme = useColorScheme();
