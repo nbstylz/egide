@@ -213,7 +213,12 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   4. Visible par tous, y compris les non-inscrits.
 - **Taille : M** — **Dépendances :** US-3.4.
 
-### US-3.6 — Génération automatique des rondes suivantes (suisse)
+### US-3.6 — Génération automatique des rondes suivantes (suisse) — ✅ Livrée (2026-07-26)
+> Appariement par groupes de score (classement complet, donc victoires puis points puis tactiques…), **jamais deux fois le même adversaire**, et le bye ne retombe jamais sur un joueur qui l'a déjà eu.
+> L'algorithme apparie le voisin de classement immédiat et revient en arrière si la suite s'avère impossible : il trouve donc un appariement valide dès qu'il en existe un.
+> Clôture bloquée tant qu'une table n'a pas de score, refusée à qui n'est pas l'organisateur, et refusée au-delà du nombre de rondes prévu. Si la génération échoue, la clôture est annulée : la ronde n'est jamais laissée figée par erreur.
+> **Issue de secours** : quand aucun appariement n'est possible sans revanche (fin de tournoi, petit effectif), l'organisateur peut l'autoriser explicitement ; les tables concernées portent alors un badge « Match retour ».
+> Après génération, l'app bascule sur la nouvelle ronde et propose de l'afficher pour projection.
 **En tant qu'** organisateur, **je veux** générer la ronde suivante en appariement suisse **afin d'** opposer les joueurs de score proche sans rematch.
 - Critères :
   1. Bouton « Générer la ronde suivante » actif uniquement quand tous les scores de la ronde en cours sont saisis.

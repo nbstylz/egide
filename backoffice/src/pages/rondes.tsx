@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { CloseRoundModal, type CloseResult } from '../components/close-round-modal';
 import { LaunchTournamentModal } from '../components/launch-tournament-modal';
 import { Toast } from '../components/toast';
 import type { TournamentWithCount } from '../hooks/use-my-tournaments';
@@ -89,6 +90,10 @@ export function RondesPage({
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>('all');
   const [keptIds, setKeptIds] = useState<Set<string>>(new Set());
   const [launchOpen, setLaunchOpen] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
+  /** Tables rejouant un affrontement déjà disputé, après un repli assumé. */
+  const [rematchTables, setRematchTables] = useState<number[]>([]);
+  const [justGenerated, setJustGenerated] = useState<number | null>(null);
   const [projection, setProjection] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -205,6 +210,44 @@ export function RondesPage({
       return isScored(pairing);
     });
   }, [pairings, search, scoreFilter, keptIds, saved]);
+
+  /**
+   * Répartition des joueurs par nombre de victoires après cette ronde.
+   * Sert à annoncer les groupes de score dans la confirmation de clôture.
+   */
+  const winGroups = useMemo(() => {
+    const tally = new Map<string, number>();
+    const add = (pseudo: string, value: number) =>
+      tally.set(pseudo, (tally.get(pseudo) ?? 0) + value);
+    for (const pairing of pairings) {
+      const a = pairing.player_a?.pseudo;
+      const b = pairing.player_b?.pseudo;
+      if (!a) continue;
+      if (!b) {
+        add(a, 1);
+        continue;
+      }
+      const scoreA = pairing.score_a ?? 0;
+      const scoreB = pairing.score_b ?? 0;
+      if (scoreA === scoreB) {
+        add(a, 0.5);
+        add(b, 0.5);
+      } else if (scoreA > scoreB) {
+        add(a, 1);
+        add(b, 0);
+      } else {
+        add(a, 0);
+        add(b, 1);
+      }
+    }
+    const counts = new Map<number, number>();
+    for (const wins of tally.values()) {
+      counts.set(wins, (counts.get(wins) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([wins, count]) => ({ wins, count }))
+      .sort((x, y) => y.wins - x.wins);
+  }, [pairings]);
 
   function clearKept() {
     if (keptIds.size > 0) setKeptIds(new Set());
@@ -446,7 +489,7 @@ export function RondesPage({
     const needle = normalize(search.trim());
     const a = pairing.player_a?.pseudo ?? '';
     const b = pairing.player_b?.pseudo ?? '';
-    if (!pairing.player_b) return `${a} est exempt cette ronde (bye). Il ne joue pas.`;
+    if (!pairing.player_b) return `${a} a le bye cette ronde : pas de table.`;
     const asked = normalize(b).includes(needle) ? b : a;
     const other = asked === a ? b : a;
     return `${asked} joue à la table ${pairing.table_number}, contre ${other}.`;
@@ -455,6 +498,12 @@ export function RondesPage({
   const singleAnswer = search.trim() !== '' && filtered.length === 1 ? answerFor(filtered[0]) : null;
   const discarded = registered.filter((r) => r.status === 'registered');
   const allScored = todoTables.length === 0 && realTables.length > 0;
+  const isLastRound = selectedNumber === tournament.rounds_count;
+  const allRoundsPlayed =
+    rounds.length >= tournament.rounds_count &&
+    rounds.every((round) => round.status === 'completed');
+  /** Joueurs encore en lice : ce sont eux qui seront appariés. */
+  const playersLeft = registered.filter((r) => r.status === 'checked_in').length;
   const keptVisible = [...keptIds].filter((id) => realTables.some((p) => p.id === id)).length;
 
   /** Hint sous la recherche : ce que fera la touche Entrée. */
@@ -487,12 +536,16 @@ export function RondesPage({
         <div className="rounds-tabs">
           <div className="segmented">
             {Array.from({ length: tournament.rounds_count }, (_, i) => i + 1).map((number) => {
-              const generated = rounds.some((r) => r.number === number);
+              const round = rounds.find((r) => r.number === number);
+              const generated = Boolean(round);
+              const closed = round?.status === 'completed';
               return (
                 <button
                   key={number}
                   type="button"
-                  className={selectedNumber === number ? 'active' : ''}
+                  className={[selectedNumber === number ? 'active' : '', closed ? 'done' : '']
+                    .filter(Boolean)
+                    .join(' ')}
                   disabled={!generated}
                   title={
                     generated
@@ -505,6 +558,7 @@ export function RondesPage({
                     setSelectedNumber(number);
                   }}>
                   Ronde {number}
+                  {closed ? ' ✓' : ''}
                 </button>
               );
             })}
@@ -647,12 +701,34 @@ export function RondesPage({
         </div>
       ) : null}
 
+      {justGenerated === selectedNumber && rematchTables.length === 0 ? (
+        <div className="banner banner-info" style={{ margin: '16px 0', maxWidth: 640 }}>
+          Ronde {selectedNumber} générée. Appariements par groupe de score, aucun match retour.{' '}
+          <button
+            className="rank-toggle"
+            style={{ color: 'var(--accent)' }}
+            onClick={() => setSelectedNumber((selectedNumber ?? 2) - 1)}>
+            Revoir la ronde {(selectedNumber ?? 2) - 1} →
+          </button>
+        </div>
+      ) : null}
+
+      {rematchTables.length > 0 && justGenerated === selectedNumber ? (
+        <div
+          className="banner banner-info banner-info-danger"
+          style={{ margin: '16px 0', maxWidth: 640 }}>
+          {rematchTables.length} table{rematchTables.length > 1 ? 's' : ''} rejoue
+          {rematchTables.length > 1 ? 'nt' : ''} un affrontement déjà disputé : aucun autre
+          appariement n’était possible.
+        </div>
+      ) : null}
+
       {byePairing && search.trim() === '' && scoreFilter !== 'todo' ? (
         <div className="banner banner-info" style={{ margin: '16px 0', maxWidth: 640 }}>
-          Nombre impair de présents : {byePairing.player_a?.pseudo} est exempt à la ronde{' '}
-          {selectedNumber} (bye). Sa victoire est déjà enregistrée : 15 – 5
+          Nombre impair de présents : {byePairing.player_a?.pseudo} a le bye à la ronde{' '}
+          {selectedNumber}. La victoire est déjà enregistrée : 15 – 5
           {tacticsMode ? `, avec ${byePairing.tactics_a ?? 3} tactiques` : ''}. Ce n’est pas une
-          erreur, aucun score n’est à saisir pour lui.
+          erreur : il n’y a aucun score à saisir sur cette ligne.
         </div>
       ) : null}
 
@@ -717,7 +793,12 @@ export function RondesPage({
                     {bye ? (
                       <span className="checkin-meta">—</span>
                     ) : (
-                      <span className="pairing-table-no">{pairing.table_number}</span>
+                      <>
+                        <span className="pairing-table-no">{pairing.table_number}</span>
+                        {rematchTables.includes(pairing.table_number) ? (
+                          <div className="badge badge-rematch">Match retour</div>
+                        ) : null}
+                      </>
                     )}
                   </td>
                   <td>
@@ -960,52 +1041,154 @@ export function RondesPage({
         </div>
       ) : null}
 
-      {/* Suite du tournoi : place réservée à la clôture (US-3.6) */}
-      {tournament.status !== 'completed' ? (
+      {/* Clôture de la ronde */}
+      {tournament.status !== 'completed' && editable ? (
         <div className="checkin-launch">
           <div>
             <div style={{ fontSize: 18, fontWeight: 600 }}>
-              Ronde {selectedNumber} {allScored ? 'complète' : 'en cours'}
+              {allScored
+                ? isLastRound
+                  ? 'Dernière ronde complète'
+                  : `Ronde ${selectedNumber} complète`
+                : `Ronde ${selectedNumber} en cours`}
             </div>
             {allScored ? (
               <>
                 <p style={{ margin: '4px 0 0' }}>
-                  Les {realTables.length} tables ont un score. Vous pourrez clôturer la ronde et
-                  générer la ronde {(selectedNumber ?? 1) + 1}.
+                  {isLastRound
+                    ? `Les ${realTables.length} tables de la ronde ${selectedNumber} ont un score. C’est la dernière ronde prévue : aucune ronde ne sera générée après la clôture.`
+                    : `Les ${realTables.length} tables ont un score. Vous pouvez clôturer la ronde ${selectedNumber} et générer la ronde ${(selectedNumber ?? 1) + 1}.`}
                 </p>
                 <div className="field-hint" style={{ marginTop: 8 }}>
-                  Un score reste modifiable tant que la ronde suivante n’est pas générée.
+                  Un score reste modifiable tant que la ronde n’est pas clôturée.
                 </div>
+                {noTacticsTables.length > 0 ? (
+                  <div className="field-hint" style={{ color: 'var(--danger)', marginTop: 8 }}>
+                    Tactiques manquantes sur {noTacticsTables.length} table
+                    {noTacticsTables.length > 1 ? 's' : ''} — 3e critère de départage.{' '}
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ marginLeft: 8 }}
+                      onClick={() => {
+                        toggleTacticsMode(true);
+                        setScoreFilter('no-tactics');
+                      }}>
+                      Compléter les tactiques
+                    </button>
+                  </div>
+                ) : null}
               </>
             ) : (
-              <p style={{ margin: '4px 0 0' }}>
-                {todoTables.length} table{todoTables.length > 1 ? 's' : ''} sur{' '}
-                {realTables.length} n’{todoTables.length > 1 ? 'ont' : 'a'} pas encore de score.
-              </p>
+              <>
+                <p style={{ margin: '4px 0 0' }}>
+                  {todoTables.length} table{todoTables.length > 1 ? 's' : ''} sur{' '}
+                  {realTables.length} n’{todoTables.length > 1 ? 'ont' : 'a'} pas encore de score.
+                </p>
+                <div className="field-hint" style={{ marginTop: 8 }}>
+                  La ronde ne peut être clôturée qu’une fois toutes les tables saisies.
+                </div>
+              </>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {!allScored && editable && todoTables.length > 0 ? (
+            {!allScored && todoTables.length > 0 ? (
               <button
                 className="btn btn-secondary"
                 onClick={() => focusField(todoTables[0].id, 'a')}>
                 Aller à la première table sans score
               </button>
             ) : null}
-            <Link to={`/tournois/${tournament.id}/classement`} className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+            <Link
+              to={`/tournois/${tournament.id}/classement`}
+              className="btn btn-secondary"
+              style={{ textDecoration: 'none' }}>
               Voir le classement →
             </Link>
             <button
               className="btn btn-primary"
-              disabled
+              disabled={!allScored || busyIds.size > 0 || failedIds.size > 0}
               title={
-                allScored ? 'Disponible prochainement' : 'Saisissez d’abord tous les scores'
-              }>
-              Clôturer la ronde
+                !allScored
+                  ? `Il reste ${todoTables.length} table(s) à saisir.`
+                  : busyIds.size > 0
+                    ? 'Enregistrement d’un score en cours…'
+                    : failedIds.size > 0
+                      ? 'Un score n’a pas été enregistré. Réessayez avant de clôturer.'
+                      : undefined
+              }
+              onClick={async () => {
+                await flush();
+                setCloseOpen(true);
+              }}>
+              {isLastRound ? 'Clôturer la dernière ronde' : `Clôturer la ronde ${selectedNumber}`}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Toutes les rondes sont jouées : la clôture du tournoi viendra en US-3.9 */}
+      {tournament.status === 'in_progress' && !editable && allRoundsPlayed ? (
+        <div className="checkin-launch">
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 600 }}>Toutes les rondes sont jouées</div>
+            <p style={{ margin: '4px 0 0' }}>
+              Les {tournament.rounds_count} rondes du tournoi sont clôturées. Les scores sont
+              figés et le classement est complet.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Link
+              to={`/tournois/${tournament.id}/classement`}
+              className="btn btn-primary"
+              style={{ textDecoration: 'none' }}>
+              Voir le classement final →
+            </Link>
+            <button className="btn btn-secondary" disabled title="Disponible prochainement">
+              Clôturer le tournoi
             </button>
             <span className="badge-soon">Bientôt</span>
           </div>
         </div>
+      ) : null}
+
+      {closeOpen && tournament && selectedNumber ? (
+        <CloseRoundModal
+          tournamentId={tournament.id}
+          roundNumber={selectedNumber}
+          roundsCount={tournament.rounds_count}
+          pairings={pairings}
+          groups={winGroups}
+          playersLeft={playersLeft}
+          onCancel={() => setCloseOpen(false)}
+          onFixTactics={() => {
+            setCloseOpen(false);
+            toggleTacticsMode(true);
+            setScoreFilter('no-tactics');
+          }}
+          onClosed={async (result: CloseResult) => {
+            setCloseOpen(false);
+            await refresh();
+            onChanged();
+            setSearch('');
+            setScoreFilter('all');
+            clearKept();
+            setRematchTables(result.rematch_tables ?? []);
+            if (result.next_round_number) {
+              setSelectedNumber(result.next_round_number);
+              setJustGenerated(result.next_round_number);
+              setToast({
+                message: `Ronde ${selectedNumber} clôturée. Ronde ${result.next_round_number} générée sur ${result.tables_count} tables.${
+                  result.bye_pseudo ? ` ${result.bye_pseudo} a le bye.` : ''
+                }`,
+                action: { label: 'Afficher pour projection', onPress: () => setProjection(true) },
+              });
+            } else {
+              setToast({
+                message: `Ronde ${selectedNumber} clôturée. Toutes les rondes sont jouées.`,
+              });
+            }
+          }}
+        />
       ) : null}
 
       {discarded.length > 0 ? (

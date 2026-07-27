@@ -720,6 +720,18 @@ a {
   background: rgba(156, 122, 31, 0.12);
 }
 
+/* Repli assumé : cette table rejoue un affrontement déjà disputé. */
+.badge-rematch {
+  color: var(--danger);
+  background: var(--danger-bg);
+  margin-top: 4px;
+}
+
+/* Ronde déjà clôturée dans le sélecteur. */
+.segmented button.done {
+  color: var(--text-secondary);
+}
+
 .score-pending {
   color: var(--text-secondary);
 }
