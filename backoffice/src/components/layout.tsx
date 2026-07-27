@@ -11,6 +11,7 @@ const TournamentSections = [
   { path: 'inscrits', label: 'Inscrits', soon: false },
   { path: 'check-in', label: 'Check-in', soon: false },
   { path: 'rondes', label: 'Rondes & scores', soon: false },
+  { path: 'classement', label: 'Classement', soon: false },
   { path: 'listes', label: 'Listes d’armées', soon: true },
 ];
 

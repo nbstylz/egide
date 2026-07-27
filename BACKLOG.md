@@ -199,7 +199,12 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   4. Seul l'organisateur peut saisir (RLS vérifiée).
 - **Taille : M** — **Dépendances :** US-3.3.
 
-### US-3.5 — Classement en temps réel
+### US-3.5 — Classement en temps réel — ✅ Livrée (2026-07-26)
+> **Règles métier validées par le porteur du projet** : une partie vaut 80 points (50 de primaire + 30 de tactiques) ; 6 tactiques marquables au maximum ; le bye vaut 15-5 avec 3 tactiques ; un nul compte pour une demi-victoire ; la force des adversaires est la somme de leurs victoires.
+> Départages, dans l'ordre : victoires → points marqués → tactiques → différentiel → force des adversaires → tirage au sort **stable** (sinon le classement changerait à chaque affichage).
+> Saisie des tactiques ajoutée à la page Rondes, derrière un interrupteur « Saisir les tactiques » : facultative, elle ne ralentit pas les organisateurs qui n'en ont pas besoin. Champs volontairement plus petits et pointillés pour ne pas être confondus avec les points.
+> Page Classement avec, comme pièce maîtresse, un dépliant « **pourquoi suis-je Nᵉ ?** » qui déroule les six critères, montre lequel a tranché et de combien, et permet de se comparer au joueur du dessus comme à celui du dessous.
+> Podium affiché uniquement une fois le tournoi terminé ; affichage projection et impression disponibles.
 **En tant que** joueur, **je veux** consulter le classement mis à jour après chaque saisie **afin de** suivre ma progression.
 - Critères :
   1. Onglet « Classement » sur la fiche tournoi : rang, pseudo, victoires/nuls/défaites, points de tournoi, points de partie cumulés.

@@ -6,10 +6,20 @@ import { Toast } from '../components/toast';
 import type { TournamentWithCount } from '../hooks/use-my-tournaments';
 import { useRegistrations } from '../hooks/use-registrations';
 import { useRounds, type Pairing } from '../hooks/use-rounds';
-import { useScoreEntry, verdictFor, type Draft } from '../hooks/use-score-entry';
+import {
+  hasTactics,
+  isDraftScored,
+  tacticsVerdictFor,
+  useScoreEntry,
+  verdictFor,
+  type Draft,
+  type Side,
+} from '../hooks/use-score-entry';
 import { formatEventDateShort } from '../lib/tournaments';
 
-type ScoreFilter = 'all' | 'todo' | 'done';
+type ScoreFilter = 'all' | 'todo' | 'done' | 'no-tactics';
+
+const EmptyDraft: Draft = { a: '', b: '', ta: '', tb: '' };
 
 type ToastState = {
   message: string;
@@ -84,7 +94,22 @@ export function RondesPage({
   const searchRef = useRef<HTMLInputElement>(null);
   const autoFocusedRound = useRef<string | null>(null);
   /** Champ à atteindre après le prochain rendu (l'enregistrement recharge la liste). */
-  const pendingFocus = useRef<{ id: string; side: 'a' | 'b' } | null>(null);
+  const pendingFocus = useRef<{ id: string; side: Side } | null>(null);
+
+  /**
+   * Les tactiques ne servent qu'au 3e départage : on ne les impose pas.
+   * Le choix est mémorisé par tournoi.
+   */
+  const tacticsKey = tournament ? `egide.tactics.${tournament.id}` : null;
+  const [tacticsMode, setTacticsMode] = useState(false);
+  useEffect(() => {
+    if (!tacticsKey) return;
+    setTacticsMode(localStorage.getItem(tacticsKey) === '1');
+  }, [tacticsKey]);
+  function toggleTacticsMode(next: boolean) {
+    setTacticsMode(next);
+    if (tacticsKey) localStorage.setItem(tacticsKey, next ? '1' : '0');
+  }
 
   const lastRoundNumber = rounds.length > 0 ? rounds[rounds.length - 1].number : null;
   // Une ronde suivie d'une autre est figée : la suivante en découle.
@@ -109,8 +134,9 @@ export function RondesPage({
     editable,
     onSaved: (pairing, previous, next, wasFilled) => {
       if (wasFilled) {
+        const tactiques = hasTactics(next) ? `, tactiques ${next.ta} · ${next.tb}` : '';
         setToast({
-          message: `Table ${pairing.table_number} corrigée : ${next.a} – ${next.b}.`,
+          message: `Table ${pairing.table_number} corrigée : ${next.a} – ${next.b}${tactiques}.`,
           action: { label: 'Annuler', onPress: () => restore(pairing, previous) },
         });
       }
@@ -127,13 +153,15 @@ export function RondesPage({
   });
 
   /** Une table est saisie quand ses deux scores sont confirmés côté serveur. */
-  const isScored = (p: Pairing) => {
-    const value = saved[p.id];
-    return Boolean(value && value.a !== '' && value.b !== '');
-  };
+  const isScored = (p: Pairing) => isDraftScored(saved[p.id]);
+  /** Tactiques complètes : les deux joueurs renseignés. */
+  const isTacticsDone = (p: Pairing) => hasTactics(saved[p.id]);
   const realTables = pairings.filter(isRealTable);
   const scoredTables = realTables.filter(isScored);
   const todoTables = realTables.filter((p) => !isScored(p));
+  // Tables dont le score est saisi mais dont les tactiques manquent.
+  const noTacticsTables = scoredTables.filter((p) => !isTacticsDone(p));
+  const tacticsDoneTables = scoredTables.filter(isTacticsDone);
   const byePairing = pairings.find((p) => !isRealTable(p)) ?? null;
 
   // Au premier affichage d'une ronde modifiable, on se place sur la première
@@ -172,9 +200,11 @@ export function RondesPage({
       // Le bye n'est ni à saisir ni saisi par l'organisateur.
       if (!isRealTable(pairing)) return scoreFilter === 'done';
       if (keptIds.has(pairing.id)) return true;
-      return scoreFilter === 'todo' ? !isScored(pairing) : isScored(pairing);
+      if (scoreFilter === 'todo') return !isScored(pairing);
+      if (scoreFilter === 'no-tactics') return isScored(pairing) && !isTacticsDone(pairing);
+      return isScored(pairing);
     });
-  }, [pairings, search, scoreFilter, keptIds]);
+  }, [pairings, search, scoreFilter, keptIds, saved]);
 
   function clearKept() {
     if (keptIds.size > 0) setKeptIds(new Set());
@@ -191,17 +221,59 @@ export function RondesPage({
     for (let step = 1; step <= order.length; step += 1) {
       const candidate = order[(start + step) % order.length];
       const draft = drafts[candidate.id];
-      if (candidate.id !== fromId && draft && (draft.a === '' || draft.b === '')) {
-        pendingFocus.current = { id: candidate.id, side: 'a' };
-        focusField(candidate.id, 'a');
-        return;
-      }
+      if (!draft || candidate.id === fromId) continue;
+
+      // Les points d'abord ; en mode tactiques, on enchaîne aussi sur les
+      // tables dont il ne manque plus que les tactiques.
+      const pointsManquants = draft.a === '' || draft.b === '';
+      const tactiquesManquantes = tacticsMode && (draft.ta === '' || draft.tb === '');
+      if (!pointsManquants && !tactiquesManquantes) continue;
+
+      const side: Side = pointsManquants ? 'a' : 'ta';
+      pendingFocus.current = { id: candidate.id, side };
+      focusField(candidate.id, side);
+      return;
     }
-    setToast({ message: 'Toutes les tables sont saisies.', variant: 'success' });
+    setToast({
+      message: tacticsMode
+        ? 'Toutes les tables sont saisies, tactiques comprises.'
+        : 'Toutes les tables sont saisies.',
+      variant: 'success',
+    });
+  }
+
+  /**
+   * On n'enregistre que si le focus quitte réellement la ligne. Le repère est
+   * l'identifiant de l'appariement, et non le libellé : « table 1 » se
+   * retrouvait dans « table 12 ».
+   */
+  function onFieldBlur(event: React.FocusEvent<HTMLInputElement>, pairing: Pairing) {
+    markTouched(pairing.id);
+    const next = event.relatedTarget as HTMLElement | null;
+    if (next?.getAttribute('data-pairing') === pairing.id) return;
+    commit(pairing);
+  }
+
+  /** Valide la ligne et enchaîne sur la table suivante à saisir. */
+  function validateRow(pairing: Pairing) {
+    markTouched(pairing.id);
+    commit(pairing);
+    if (scoreFilter !== 'all') {
+      setKeptIds((current) => new Set(current).add(pairing.id));
+    }
+    queueNextTodo(pairing.id);
+  }
+
+  /** Échap : la ligne reprend les valeurs enregistrées. */
+  function resetRow(pairing: Pairing) {
+    setField(pairing.id, 'a', String(pairing.score_a ?? ''));
+    setField(pairing.id, 'b', String(pairing.score_b ?? ''));
+    setField(pairing.id, 'ta', String(pairing.tactics_a ?? ''));
+    setField(pairing.id, 'tb', String(pairing.tactics_b ?? ''));
   }
 
   /** Flèches haut/bas : même colonne, ligne voisine. */
-  function focusNeighbour(fromId: string, side: 'a' | 'b', direction: -1 | 1) {
+  function focusNeighbour(fromId: string, side: Side, direction: -1 | 1) {
     const order = pairings.filter(isRealTable);
     const index = order.findIndex((p) => p.id === fromId);
     const target = order[index + direction];
@@ -469,6 +541,11 @@ export function RondesPage({
                 ? 'Toutes les tables sont saisies'
                 : `${todoTables.length} table${todoTables.length > 1 ? 's' : ''} reste${todoTables.length > 1 ? 'nt' : ''} à saisir`}
             </div>
+            {tacticsMode ? (
+              <div className="stat-label">
+                Tactiques : {tacticsDoneTables.length} / {realTables.length} tables
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -530,7 +607,29 @@ export function RondesPage({
                 }}>
                 Saisies ({scoredTables.length})
               </button>
+              {tacticsMode ? (
+                <button
+                  type="button"
+                  className={scoreFilter === 'no-tactics' ? 'active' : ''}
+                  onClick={() => {
+                    setScoreFilter('no-tactics');
+                    clearKept();
+                  }}>
+                  Sans tactiques ({noTacticsTables.length})
+                </button>
+              ) : null}
             </div>
+          ) : null}
+
+          {editable ? (
+            <label className="toolbar-toggle" title="Départage n° 3 du classement. Décochez pour saisir uniquement les points.">
+              <input
+                type="checkbox"
+                checked={tacticsMode}
+                onChange={(event) => toggleTacticsMode(event.target.checked)}
+              />
+              Saisir les tactiques
+            </label>
           ) : null}
 
           <button className="btn btn-secondary" onClick={() => setProjection(true)}>
@@ -551,7 +650,8 @@ export function RondesPage({
       {byePairing && search.trim() === '' && scoreFilter !== 'todo' ? (
         <div className="banner banner-info" style={{ margin: '16px 0', maxWidth: 640 }}>
           Nombre impair de présents : {byePairing.player_a?.pseudo} est exempt à la ronde{' '}
-          {selectedNumber} (bye). Sa victoire est déjà enregistrée : 15 – 5. Ce n’est pas une
+          {selectedNumber} (bye). Sa victoire est déjà enregistrée : 15 – 5
+          {tacticsMode ? `, avec ${byePairing.tactics_a ?? 3} tactiques` : ''}. Ce n’est pas une
           erreur, aucun score n’est à saisir pour lui.
         </div>
       ) : null}
@@ -589,13 +689,15 @@ export function RondesPage({
               <th>Joueur A</th>
               <th>Joueur B</th>
               <th style={{ width: 200 }}>Score</th>
+              {tacticsMode ? <th style={{ width: 140 }}>Tactiques</th> : null}
             </tr>
           </thead>
           <tbody>
             {filtered.map((pairing) => {
               const bye = !isRealTable(pairing);
-              const draft: Draft = drafts[pairing.id] ?? { a: '', b: '' };
+              const draft: Draft = drafts[pairing.id] ?? EmptyDraft;
               const verdict = verdictFor(pairing, draft, touchedIds.has(pairing.id));
+              const tacVerdict = tacticsVerdictFor(pairing, draft, touchedIds.has(pairing.id));
               const scored = isScored(pairing);
 
               const rowClass = [
@@ -663,6 +765,7 @@ export function RondesPage({
                                 pattern="[0-9]*"
                                 maxLength={3}
                                 autoComplete="off"
+                                data-pairing={pairing.id}
                                 aria-label={`Points de ${
                                   side === 'a'
                                     ? (pairing.player_a?.pseudo ?? 'joueur A')
@@ -671,36 +774,23 @@ export function RondesPage({
                                 value={draft[side]}
                                 onFocus={(event) => event.target.select()}
                                 onChange={(event) => setField(pairing.id, side, event.target.value)}
-                                onBlur={(event) => {
-                                  markTouched(pairing.id);
-                                  // On n'enregistre que si le focus quitte la ligne.
-                                  const next = event.relatedTarget as HTMLElement | null;
-                                  const stays =
-                                    next?.getAttribute('aria-label')?.includes(
-                                      `table ${pairing.table_number}`
-                                    ) ?? false;
-                                  if (!stays) commit(pairing);
-                                }}
+                                onBlur={(event) => onFieldBlur(event, pairing)}
                                 onKeyDown={(event) => {
                                   if (event.key === 'Enter') {
                                     event.preventDefault();
                                     if (side === 'a') {
                                       focusField(pairing.id, 'b');
+                                    } else if (tacticsMode && !event.shiftKey) {
+                                      // Depuis les points B, on passe aux tactiques ;
+                                      // Maj+Entrée les saute pour aller plus vite.
+                                      focusField(pairing.id, 'ta');
                                     } else {
-                                      markTouched(pairing.id);
-                                      commit(pairing);
-                                      if (scoreFilter !== 'all') {
-                                        setKeptIds((current) =>
-                                          new Set(current).add(pairing.id)
-                                        );
-                                      }
-                                      queueNextTodo(pairing.id);
+                                      validateRow(pairing);
                                     }
                                   }
                                   if (event.key === 'Escape') {
                                     event.preventDefault();
-                                    setField(pairing.id, 'a', String(pairing.score_a ?? ''));
-                                    setField(pairing.id, 'b', String(pairing.score_b ?? ''));
+                                    resetRow(pairing);
                                     (event.target as HTMLInputElement).blur();
                                   }
                                   if (event.key === 'ArrowDown') {
@@ -731,7 +821,7 @@ export function RondesPage({
                               : verdict.kind === 'missing'
                                 ? `Saisissez aussi les points de ${verdict.pseudo}.`
                                 : verdict.kind === 'unusual'
-                                  ? 'Score inhabituel (au-delà de 20). Vérifiez la feuille.'
+                                  ? 'Score inhabituel (au-delà de 80). Vérifiez la feuille.'
                                   : ' '}
                         </div>
                       </>
@@ -754,6 +844,97 @@ export function RondesPage({
                       <span className="score-pending">— · —</span>
                     )}
                   </td>
+
+                  {tacticsMode ? (
+                    <td className="cell-tactics">
+                      {bye ? (
+                        <>
+                          <span className="score-auto">{pairing.tactics_a ?? 3} · —</span>
+                          <div className="checkin-meta">Attribué automatiquement</div>
+                        </>
+                      ) : editable ? (
+                        <>
+                          <div className="tac-inputs">
+                            {(['ta', 'tb'] as const).map((side) => (
+                              <span key={side} style={{ display: 'contents' }}>
+                                {side === 'tb' ? <span className="tac-dot">·</span> : null}
+                                <input
+                                  ref={(element) =>
+                                    registerInput(`${pairing.id}-${side}`, element)
+                                  }
+                                  className={[
+                                    'tac-input',
+                                    tacVerdict.kind === 'unusual' && tacVerdict.side === side
+                                      ? 'warn'
+                                      : '',
+                                    tacVerdict.kind === 'missing' && tacVerdict.side === side
+                                      ? 'missing'
+                                      : '',
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' ')}
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  maxLength={1}
+                                  placeholder="–"
+                                  autoComplete="off"
+                                  data-pairing={pairing.id}
+                                  aria-label={`Tactiques de ${
+                                    side === 'ta'
+                                      ? (pairing.player_a?.pseudo ?? 'joueur A')
+                                      : (pairing.player_b?.pseudo ?? 'joueur B')
+                                  }, table ${pairing.table_number}`}
+                                  value={draft[side]}
+                                  onFocus={(event) => event.target.select()}
+                                  onChange={(event) =>
+                                    setField(pairing.id, side, event.target.value)
+                                  }
+                                  onBlur={(event) => onFieldBlur(event, pairing)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                      event.preventDefault();
+                                      if (side === 'ta') focusField(pairing.id, 'tb');
+                                      else validateRow(pairing);
+                                    }
+                                    if (event.key === 'Escape') {
+                                      event.preventDefault();
+                                      resetRow(pairing);
+                                      (event.target as HTMLInputElement).blur();
+                                    }
+                                    if (event.key === 'ArrowDown') {
+                                      event.preventDefault();
+                                      focusNeighbour(pairing.id, side, 1);
+                                    }
+                                    if (event.key === 'ArrowUp') {
+                                      event.preventDefault();
+                                      focusNeighbour(pairing.id, side, -1);
+                                    }
+                                  }}
+                                />
+                              </span>
+                            ))}
+                          </div>
+                          <div
+                            className={`tac-verdict${
+                              tacVerdict.kind === 'none' ? '' : ' warn'
+                            }`}>
+                            {tacVerdict.kind === 'missing'
+                              ? `Saisissez aussi les tactiques de ${tacVerdict.pseudo}.`
+                              : tacVerdict.kind === 'unusual'
+                                ? 'Au-delà de 6 tactiques, vérifiez la feuille.'
+                                : ' '}
+                          </div>
+                        </>
+                      ) : pairing.tactics_a !== null && pairing.tactics_b !== null ? (
+                        <span className="score-auto">
+                          {pairing.tactics_a} · {pairing.tactics_b}
+                        </span>
+                      ) : (
+                        <span className="score-pending">— · —</span>
+                      )}
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}
@@ -773,8 +954,9 @@ export function RondesPage({
 
       {editable ? (
         <div className="field-hint" style={{ marginTop: 16 }}>
-          Tab pour passer d’un champ à l’autre, Entrée pour valider et passer à la table suivante,
-          Échap pour annuler la ligne.
+          {tacticsMode
+            ? 'Tab pour passer d’un champ à l’autre, Entrée pour valider et passer au champ suivant, Maj+Entrée depuis les points pour sauter les tactiques, Échap pour annuler la ligne.'
+            : 'Tab pour passer d’un champ à l’autre, Entrée pour valider et passer à la table suivante, Échap pour annuler la ligne.'}
         </div>
       ) : null}
 
@@ -810,6 +992,9 @@ export function RondesPage({
                 Aller à la première table sans score
               </button>
             ) : null}
+            <Link to={`/tournois/${tournament.id}/classement`} className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+              Voir le classement →
+            </Link>
             <button
               className="btn btn-primary"
               disabled

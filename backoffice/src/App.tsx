@@ -6,6 +6,7 @@ import { useSession } from './hooks/use-session';
 import { isSupabaseConfigured } from './lib/supabase';
 import { ConnexionPage } from './pages/connexion';
 import { CheckInPage } from './pages/check-in';
+import { ClassementPage } from './pages/classement';
 import { InscritsPage } from './pages/inscrits';
 import { RondesPage } from './pages/rondes';
 import { PlaceholderPage } from './pages/placeholder';
@@ -38,7 +39,14 @@ function TournoiRoute({
   const { tournament, loading, error, refresh } = useTournament(id);
   return (
     <Layout email={email} pseudo={pseudo} tournament={tournament}>
-      {section === 'rondes' ? (
+      {section === 'classement' ? (
+        <ClassementPage
+          tournament={tournament}
+          tournamentLoading={loading}
+          tournamentError={error}
+          userId={userId}
+        />
+      ) : section === 'rondes' ? (
         <RondesPage
           tournament={tournament}
           tournamentLoading={loading}
@@ -124,6 +132,10 @@ export default function App() {
       <Route
         path="/tournois/:id/rondes"
         element={<TournoiRoute userId={session.user.id} email={email} pseudo={pseudo} section="rondes" />}
+      />
+      <Route
+        path="/tournois/:id/classement"
+        element={<TournoiRoute userId={session.user.id} email={email} pseudo={pseudo} section="classement" />}
       />
       <Route
         path="/tournois/:id/listes"

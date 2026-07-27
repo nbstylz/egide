@@ -820,8 +820,231 @@ a {
   pointer-events: none;
 }
 
+/* ---------- Tactiques ---------- */
+
+/* Volontairement plus petits, creux et pointillés : impossible de les
+   confondre avec les points de partie. */
+.cell-tactics {
+  padding-top: var(--sp-2);
+  padding-bottom: var(--sp-2);
+}
+
+.tac-inputs {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.tac-input {
+  width: 40px;
+  height: 36px;
+  padding: 0;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg);
+  border: 1px dashed var(--surface-active);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.tac-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.tac-input:focus {
+  outline: none;
+  border-style: solid;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(156, 122, 31, 0.25);
+}
+
+.tac-input.warn,
+.tac-input.missing {
+  border-style: solid;
+  border-color: var(--danger);
+}
+
+.tac-dot {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+.tac-verdict {
+  min-height: 16px;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.tac-verdict.warn {
+  color: var(--danger);
+}
+
+.toolbar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 40px;
+  font-size: 15px;
+  align-self: flex-start;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ---------- Classement ---------- */
+
+.tiebreak-summary {
+  font-size: 13px;
+  color: var(--text-secondary);
+  max-width: 640px;
+  margin-top: var(--sp-1);
+}
+
+.rank-cell {
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.rank-cell.top {
+  color: var(--accent);
+}
+
+.rank-move {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rank-move.up {
+  color: var(--success);
+}
+
+.rank-move.down {
+  color: var(--danger);
+}
+
+.rank-move.flat {
+  color: var(--text-secondary);
+}
+
+.rank-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-num.strong {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+/* La cellule du critère qui a réellement départagé. */
+.rank-decisive {
+  color: var(--accent);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.rank-tie-group {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.rank-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-family: inherit;
+}
+
+.rank-explain > td {
+  background: var(--surface);
+  padding: var(--sp-4);
+  height: auto;
+}
+
+.rank-explain h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 var(--sp-2);
+}
+
+.explain-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 72px 72px 140px;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: var(--sp-1) 0;
+  font-size: 15px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--surface-active);
+}
+
+.explain-row.decisive {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.explain-conclusion {
+  margin-top: var(--sp-3);
+  font-size: 15px;
+  color: var(--text);
+}
+
+.podium-card {
+  flex: 1;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: var(--sp-3);
+}
+
+.podium-card.first {
+  border-color: var(--accent);
+}
+
+.projection-standings {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-2);
+}
+
+.projection-rank-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-bottom: 1px solid var(--surface-active);
+}
+
+.projection-score {
+  margin-left: auto;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+@media (min-width: 1600px) {
+  .projection-standings {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .hide-xnarrow {
+    display: none;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
-  .score-input:focus {
+  .score-input:focus,
+  .tac-input:focus {
     box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.3);
   }
 }
@@ -1375,5 +1598,20 @@ a {
   .checkin-launch {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  /* On ne masque jamais un champ de saisie : c'est la faction qui saute. */
+  .tac-input {
+    width: 36px;
+  }
+
+  .explain-row {
+    grid-template-columns: 24px 1fr 56px 56px;
+    font-size: 13px;
+  }
+
+  .explain-row > :last-child {
+    grid-column: 1 / -1;
+    padding-left: 32px;
   }
 }
