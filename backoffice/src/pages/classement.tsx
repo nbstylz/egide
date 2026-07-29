@@ -197,6 +197,7 @@ export function ClassementPage({
   }
 
   const finished = tournament.status === 'completed';
+  const droppedCount = standings.filter((s) => s.dropped).length;
   const roundsPlayed = rounds.length;
   const pending = pairings.filter((p) => p.player_b !== null && p.score_a === null).length;
 
@@ -307,6 +308,14 @@ export function ClassementPage({
         </div>
       )}
 
+      {droppedCount > 0 ? (
+        <div className="banner banner-info" style={{ marginTop: 16, maxWidth: 640 }}>
+          {droppedCount > 1
+            ? `${droppedCount} joueurs ont abandonné en cours de tournoi. Leurs résultats acquis restent comptabilisés ; ils n’ont pas été appariés aux rondes suivantes.`
+            : 'Un joueur a abandonné en cours de tournoi. Ses résultats acquis restent comptabilisés ; il n’a pas été apparié aux rondes suivantes.'}
+        </div>
+      ) : null}
+
       {missingTactics > 0 ? (
         <div className="banner banner-info" style={{ marginTop: 16, maxWidth: 640 }}>
           Les tactiques ne sont pas saisies pour {missingTactics} table
@@ -317,8 +326,10 @@ export function ClassementPage({
       ) : null}
 
       {/* Podium, seulement une fois le tournoi terminé */}
-      {finished && standings.length >= 3 ? (
-        <div className="stats-row" style={{ marginTop: 24 }}>
+      {finished && standings.length > 0 ? (
+        <>
+        <h2 className="section-title">Podium</h2>
+        <div className="stats-row" style={{ marginTop: 16 }}>
           {standings.slice(0, 3).map((standing) => (
             <div
               key={standing.player_id}
@@ -336,6 +347,7 @@ export function ClassementPage({
             </div>
           ))}
         </div>
+        </>
       ) : null}
 
       <div className="rounds-bar">
@@ -343,6 +355,11 @@ export function ClassementPage({
           <div className="stat-card">
             <div className="stat-value">{standings.length}</div>
             <div className="stat-label">joueurs classés</div>
+            {droppedCount > 0 ? (
+              <div className="stat-label">
+                dont {droppedCount} abandon{droppedCount > 1 ? 's' : ''}
+              </div>
+            ) : null}
           </div>
           <div className="stat-card">
             <div className="stat-value">
@@ -457,7 +474,14 @@ export function ClassementPage({
                     <span>
                       <span className="cell-name">{standing.pseudo}</span>
                       <br />
-                      <span className="checkin-meta">{standing.faction_favorite ?? '—'}</span>
+                      {standing.dropped ? (
+                        <span className="badge badge-dropped">
+                          Abandon
+                          {standing.dropped_round ? ` · R${standing.dropped_round}` : ''}
+                        </span>
+                      ) : (
+                        <span className="checkin-meta">{standing.faction_favorite ?? '—'}</span>
+                      )}
                     </span>
                   </div>
                 </td>

@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+
+import { supabase } from '../lib/supabase';
 
 import { CloseRoundModal, type CloseResult } from '../components/close-round-modal';
+import { CompleteTournamentModal } from '../components/complete-tournament-modal';
+import { DropPlayerModal } from '../components/drop-player-modal';
 import { LaunchTournamentModal } from '../components/launch-tournament-modal';
 import { Toast } from '../components/toast';
 import type { TournamentWithCount } from '../hooks/use-my-tournaments';
-import { useRegistrations } from '../hooks/use-registrations';
+import { useRegistrations, type Registration } from '../hooks/use-registrations';
+import { useStandings } from '../hooks/use-standings';
 import { useRounds, type Pairing } from '../hooks/use-rounds';
 import {
   hasTactics,
@@ -85,12 +90,16 @@ export function RondesPage({
     error,
     refresh,
   } = useRounds(tournament?.id);
+  const { standings, refresh: refreshStandings } = useStandings(tournament?.id);
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>('all');
   const [keptIds, setKeptIds] = useState<Set<string>>(new Set());
   const [launchOpen, setLaunchOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
+  const [dropTarget, setDropTarget] = useState<Registration | null>(null);
+  const [completeOpen, setCompleteOpen] = useState(false);
   /** Tables rejouant un affrontement déjà disputé, après un repli assumé. */
   const [rematchTables, setRematchTables] = useState<number[]>([]);
   const [justGenerated, setJustGenerated] = useState<number | null>(null);
@@ -117,9 +126,12 @@ export function RondesPage({
   }
 
   const lastRoundNumber = rounds.length > 0 ? rounds[rounds.length - 1].number : null;
-  // Une ronde suivie d'une autre est figée : la suivante en découle.
+  const selectedRound = rounds.find((r) => r.number === selectedNumber) ?? null;
+  // Une ronde close est figée, qu'une autre l'ait suivie ou non.
   const editable =
-    tournament?.status === 'in_progress' && selectedNumber === lastRoundNumber;
+    tournament?.status === 'in_progress' &&
+    selectedNumber === lastRoundNumber &&
+    selectedRound?.status !== 'completed';
 
   const {
     drafts,
@@ -502,8 +514,17 @@ export function RondesPage({
   const allRoundsPlayed =
     rounds.length >= tournament.rounds_count &&
     rounds.every((round) => round.status === 'completed');
-  /** Joueurs encore en lice : ce sont eux qui seront appariés. */
-  const playersLeft = registered.filter((r) => r.status === 'checked_in').length;
+  /** Joueurs encore en lice : les abandons ne sont plus appariés. */
+  const inPlay = registered.filter((r) => r.status === 'checked_in');
+  const droppedPlayers = registered.filter((r) => r.status === 'dropped');
+  const playersLeft = inPlay.length;
+
+  /** Table d'un joueur dans la ronde affichée, s'il en a une. */
+  function pairingOf(playerId: string): Pairing | null {
+    return (
+      pairings.find((p) => p.player_a_id === playerId || p.player_b_id === playerId) ?? null
+    );
+  }
   const keptVisible = [...keptIds].filter((id) => realTables.some((p) => p.id === id)).length;
 
   /** Hint sous la recherche : ce que fera la touche Entrée. */
@@ -1143,12 +1164,173 @@ export function RondesPage({
               style={{ textDecoration: 'none' }}>
               Voir le classement final →
             </Link>
-            <button className="btn btn-secondary" disabled title="Disponible prochainement">
+            <button className="btn btn-primary" onClick={() => setCompleteOpen(true)}>
               Clôturer le tournoi
             </button>
-            <span className="badge-soon">Bientôt</span>
           </div>
         </div>
+      ) : null}
+
+      {/* Tournoi terminé : rappel du vainqueur et accès au podium */}
+      {tournament.status === 'completed' ? (
+        <div className="checkin-launch">
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 600 }}>Tournoi terminé</div>
+            <p style={{ margin: '4px 0 0' }}>
+              {tournament.rounds_count} ronde{tournament.rounds_count > 1 ? 's' : ''} jouée
+              {tournament.rounds_count > 1 ? 's' : ''}, {standings.length} joueurs classés
+              {droppedPlayers.length > 0
+                ? `, ${droppedPlayers.length} abandon${droppedPlayers.length > 1 ? 's' : ''}`
+                : ''}
+              .{standings[0] ? ` Vainqueur : ${standings[0].pseudo}.` : ''}
+            </p>
+          </div>
+          <Link
+            to={`/tournois/${tournament.id}/classement`}
+            className="btn btn-primary"
+            style={{ textDecoration: 'none' }}>
+            Voir le classement final →
+          </Link>
+        </div>
+      ) : null}
+
+      {/* Abandons : le geste vit ici, là où l'organisateur travaille le jour J */}
+      {registered.length > 0 ? (
+        <details className="details-section">
+          <summary>
+            Abandons et joueurs en lice ({playersLeft} en lice
+            {droppedPlayers.length > 0
+              ? ` · ${droppedPlayers.length} abandon${droppedPlayers.length > 1 ? 's' : ''}`
+              : ''}
+            )
+          </summary>
+          <p style={{ marginTop: 16 }}>
+            Un joueur qui quitte le tournoi conserve les résultats déjà acquis. Il n’est plus
+            apparié aux rondes suivantes et reste au classement, avec la mention « Abandon ».
+          </p>
+          <table className="table table-static">
+            <thead>
+              <tr>
+                <th>Joueur</th>
+                <th className="hide-narrow" style={{ width: 160 }}>
+                  Table ronde {selectedNumber}
+                </th>
+                {tournament.status === 'in_progress' ? <th style={{ width: 120 }} /> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {[...inPlay, ...droppedPlayers].map((registration) => {
+                const table = pairingOf(registration.player_id);
+                const isDropped = registration.status === 'dropped';
+                return (
+                  <tr key={registration.id} className={isDropped ? 'row-muted' : ''}>
+                    <td>
+                      <div className="reg-cell">
+                        <span className="reg-avatar">
+                          {(registration.profile?.pseudo ?? '?').charAt(0).toUpperCase()}
+                        </span>
+                        <span>
+                          <span className="cell-name">{registration.profile?.pseudo}</span>
+                          <br />
+                          {isDropped ? (
+                            <span className="badge badge-dropped">
+                              Abandon
+                              {registration.dropped_round ? ` · R${registration.dropped_round}` : ''}
+                            </span>
+                          ) : (
+                            <span className="checkin-meta">
+                              {registration.profile?.faction_favorite ?? '—'}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="hide-narrow checkin-meta">
+                      {table
+                        ? table.player_b_id === null
+                          ? 'Bye'
+                          : `Table ${table.table_number}`
+                        : '—'}
+                    </td>
+                    {tournament.status === 'in_progress' ? (
+                      <td className="cell-actions">
+                        {isDropped ? (
+                          <button
+                            className="btn btn-sm btn-secondary"
+                            onClick={async () => {
+                              if (!supabase) return;
+                              await supabase.rpc('drop_player', {
+                                p_registration_id: registration.id,
+                                p_dropped: false,
+                                p_forfeit: false,
+                              });
+                              await refreshRegistrations();
+                              await refreshStandings();
+                              setToast({
+                                message: `${registration.profile?.pseudo} est réintégré.`,
+                              });
+                            }}>
+                            Réintégrer
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-sm btn-ghost-danger"
+                            aria-label={`Déclarer l’abandon de ${registration.profile?.pseudo}`}
+                            onClick={() => setDropTarget(registration)}>
+                            Abandon
+                          </button>
+                        )}
+                      </td>
+                    ) : null}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </details>
+      ) : null}
+
+      {dropTarget && selectedNumber ? (
+        <DropPlayerModal
+          registrationId={dropTarget.id}
+          pseudo={dropTarget.profile?.pseudo ?? 'ce joueur'}
+          roundNumber={selectedNumber}
+          pairing={pairingOf(dropTarget.player_id)}
+          playersLeft={playersLeft}
+          onCancel={() => setDropTarget(null)}
+          onDropped={async (forfeited, opponent, table) => {
+            const pseudo = dropTarget.profile?.pseudo ?? 'Le joueur';
+            setDropTarget(null);
+            await Promise.all([refresh(), refreshRegistrations(), refreshStandings()]);
+            setToast({
+              message: forfeited
+                ? `${pseudo} a abandonné. ${opponent} gagne la table ${table} par forfait, 15 – 5.`
+                : `${pseudo} a abandonné. Il ne sera plus apparié. ${playersLeft - 1} joueurs encore en lice.`,
+            });
+          }}
+        />
+      ) : null}
+
+      {completeOpen && tournament ? (
+        <CompleteTournamentModal
+          tournamentId={tournament.id}
+          tournamentName={tournament.name}
+          roundsCount={tournament.rounds_count}
+          standings={standings}
+          tieCount={0}
+          missingTactics={noTacticsTables.length}
+          onCancel={() => setCompleteOpen(false)}
+          onReviewStandings={() => {
+            setCompleteOpen(false);
+            navigate(`/tournois/${tournament.id}/classement`);
+          }}
+          onCompleted={async () => {
+            setCompleteOpen(false);
+            onChanged();
+            await refresh();
+            navigate(`/tournois/${tournament.id}/classement`);
+          }}
+        />
       ) : null}
 
       {closeOpen && tournament && selectedNumber ? (

@@ -52,7 +52,12 @@ export const RemovableStatuses: TournamentStatus[] = ['draft', 'open'];
 /** Statuts pour lesquels le pointage des présents est modifiable. */
 export const CheckInEditableStatuses: TournamentStatus[] = ['open'];
 
-export type RegistrationStatus = 'registered' | 'waitlisted' | 'withdrawn' | 'checked_in';
+export type RegistrationStatus =
+  | 'registered'
+  | 'waitlisted'
+  | 'withdrawn'
+  | 'checked_in'
+  | 'dropped';
 
 /** Statuts d'inscription qui occupent réellement une place. */
 export const ActiveRegistrationStatuses: RegistrationStatus[] = ['registered', 'checked_in'];
@@ -62,6 +67,7 @@ export const RegistrationStatusLabels: Record<RegistrationStatus, string> = {
   waitlisted: 'Liste d’attente',
   withdrawn: 'Désisté',
   checked_in: 'Présent',
+  dropped: 'Abandon',
 };
 
 /** « 12/09/2026 » — format court pour les colonnes de tableau. */

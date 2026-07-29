@@ -237,7 +237,13 @@ EGIDE est l'application de référence de la scène compétitive francophone War
 - **Point métier :** le cahier des charges dit « à préciser en phase de conception ». **Question à poser au porteur du projet (expert AOS)** — ordre exact des tie-breakers et barème du bye — avant de développer cette US.
 - **Taille : M** — **Dépendances :** US-3.5, US-3.6.
 
-### US-3.8 — Abandon en cours de tournoi (drop)
+### US-3.8 — Abandon en cours de tournoi (drop) — ✅ Livrée (2026-07-26)
+> Se déclenche depuis la page Rondes & scores, là où l'organisateur travaille le jour J (le check-in y renvoyait déjà).
+> Le joueur **conserve ses résultats acquis** — ses adversaires les ont mérités — et n'est plus apparié aux rondes suivantes. Le classement le signale par un badge neutre « Abandon · R2 », **sans le déclasser**.
+> Point délicat traité : si sa table de la ronde en cours n'a pas de score, la modale demande ce qui a été joué et propose d'enregistrer un forfait 15-5 pour l'adversaire — sans quoi la ronde ne pourrait jamais être clôturée.
+> L'abandon est réversible tant que le tournoi n'est pas terminé, mais les rondes déjà générées ne sont pas refaites.
+
+### US-3.8 (critères d'origine) — Abandon en cours de tournoi
 **En tant qu'** organisateur, **je veux** retirer un joueur qui abandonne **afin que** les rondes suivantes restent cohérentes.
 - Critères :
   1. Action « Drop » sur un joueur depuis la gestion du tournoi, avec confirmation.
@@ -245,7 +251,12 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   3. Le classement le signale (mention « abandon »).
 - **Taille : S** — **Dépendances :** US-3.6.
 
-### US-3.9 — Clôture du tournoi et podium
+### US-3.9 — Clôture du tournoi et podium — ✅ Livrée (2026-07-26)
+> Le bouton n'apparaît qu'une fois toutes les rondes clôturées. La modale fait **relire le podium** avant de valider et exige une case à cocher : c'est le geste le plus définitif du produit.
+> Après clôture : statut « terminé », scores définitivement figés (vérifié en base), aucun abandon ni réintégration possible, et redirection vers le classement final avec son podium.
+> Le tournoi reste entièrement consultable : toutes les sections restent accessibles en lecture seule.
+
+### US-3.9 (critères d'origine) — Clôture du tournoi et podium
 **En tant qu'** organisateur, **je veux** clôturer le tournoi après la dernière ronde **afin de** figer le classement final.
 - Critères :
   1. Bouton « Clôturer » disponible quand la dernière ronde est complètement saisie ; statut → « terminé ».

@@ -8,6 +8,7 @@ export type Registration = {
   player_id: string;
   status: RegistrationStatus;
   created_at: string;
+  dropped_round: number | null;
   profile: { pseudo: string; faction_favorite: string | null; region: string | null } | null;
 };
 
@@ -42,7 +43,9 @@ export function useRegistrations(tournamentId: string | undefined) {
     setError(false);
     const { data, error: dbError } = await supabase
       .from('registrations')
-      .select('id, player_id, status, created_at, profile:profiles(pseudo, faction_favorite, region)')
+      .select(
+        'id, player_id, status, created_at, dropped_round, profile:profiles(pseudo, faction_favorite, region)'
+      )
       .eq('tournament_id', tournamentId);
     if (dbError) {
       setError(true);

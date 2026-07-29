@@ -12,6 +12,8 @@ export type Round = {
 export type Pairing = {
   id: string;
   table_number: number;
+  player_a_id: string;
+  player_b_id: string | null;
   score_a: number | null;
   score_b: number | null;
   /** Tactiques marquées : 3e critère de départage du classement. */
@@ -71,7 +73,7 @@ export function useRounds(tournamentId: string | undefined) {
     const { data: pairingRows, error: pairingError } = await supabase
       .from('pairings')
       .select(
-        'id, table_number, score_a, score_b, tactics_a, tactics_b, player_a:profiles!pairings_player_a_id_fkey(pseudo, faction_favorite), player_b:profiles!pairings_player_b_id_fkey(pseudo, faction_favorite)'
+        'id, table_number, player_a_id, player_b_id, score_a, score_b, tactics_a, tactics_b, player_a:profiles!pairings_player_a_id_fkey(pseudo, faction_favorite), player_b:profiles!pairings_player_b_id_fkey(pseudo, faction_favorite)'
       )
       .eq('round_id', current.id)
       .order('table_number');

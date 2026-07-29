@@ -18,6 +18,9 @@ export type Standing = {
   /** Victoires nuls compris (un nul vaut 0,5) : c'est le 1er départage. */
   win_score: number;
   opponents_wins: number;
+  /** Le joueur a abandonné en cours de tournoi ; ses résultats restent acquis. */
+  dropped: boolean;
+  dropped_round: number | null;
 };
 
 /** Les six critères de départage, dans l'ordre validé. */
