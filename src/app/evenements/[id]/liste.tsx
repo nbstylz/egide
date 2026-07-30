@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -71,6 +72,8 @@ export default function ListeArmeeScreen() {
   const [serverError, setServerError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmingExit, setConfirmingExit] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Préremplissage une seule fois : liste existante d'abord, sinon la
   // faction favorite du profil. Jamais pendant la saisie — et pas avant que
@@ -134,6 +137,54 @@ export default function ListeArmeeScreen() {
     }
     await refresh();
     leave();
+  }
+
+  /**
+   * Choisit un PDF (5 Mo max) et l'envoie dans le bucket privé. Le PDF ne
+   * remplace pas le texte : il s'ajoute à la liste déjà soumise.
+   */
+  async function handlePickPdf() {
+    if (!supabase || !id || !myRegistration) return;
+    setPdfError(null);
+    const picked = await DocumentPicker.getDocumentAsync({
+      type: 'application/pdf',
+      copyToCacheDirectory: true,
+    });
+    if (picked.canceled || picked.assets.length === 0) return;
+    const asset = picked.assets[0];
+    if (asset.size && asset.size > 5 * 1024 * 1024) {
+      setPdfError('Le fichier dépasse 5 Mo. Exporte une version plus légère.');
+      return;
+    }
+    setPdfBusy(true);
+    try {
+      const response = await fetch(asset.uri);
+      const blob = await response.blob();
+      const path = `${myRegistration.id}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from('army-lists')
+        .upload(path, blob, { upsert: true, contentType: 'application/pdf' });
+      if (uploadError) throw uploadError;
+      const { error: rpcError } = await supabase.rpc('set_army_pdf', {
+        p_tournament_id: id,
+        p_attached: true,
+      });
+      if (rpcError) throw rpcError;
+      await refresh();
+    } catch {
+      setPdfError('Impossible d’envoyer le PDF. Vérifie ta connexion et réessaie.');
+    }
+    setPdfBusy(false);
+  }
+
+  async function handleRemovePdf() {
+    if (!supabase || !id || !myRegistration) return;
+    setPdfBusy(true);
+    setPdfError(null);
+    await supabase.storage.from('army-lists').remove([`${myRegistration.id}.pdf`]);
+    await supabase.rpc('set_army_pdf', { p_tournament_id: id, p_attached: false });
+    await refresh();
+    setPdfBusy(false);
   }
 
   const loading = sessionLoading || tournamentLoading || listLoading || !seeded;
@@ -273,6 +324,64 @@ export default function ListeArmeeScreen() {
               maxLength={20000}
             />
           </View>
+
+          {/* Le PDF s'ajoute à une liste déjà soumise (export d'app de listes). */}
+          {list ? (
+            <View style={styles.field}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Ou joindre un PDF (5 Mo max)
+              </ThemedText>
+              {list.pdf_path ? (
+                <View style={styles.pdfRow}>
+                  <Ionicons name="document-attach-outline" size={18} color={colors.tint} />
+                  <ThemedText type="small" style={styles.pdfName}>
+                    PDF joint à ta liste
+                  </ThemedText>
+                  <Pressable
+                    disabled={pdfBusy}
+                    onPress={handleRemovePdf}
+                    accessibilityRole="button"
+                    style={styles.pdfAction}>
+                    <ThemedText type="smallBold" style={{ color: RedColor[mode] }}>
+                      Retirer
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    disabled={pdfBusy}
+                    onPress={handlePickPdf}
+                    accessibilityRole="button"
+                    style={styles.pdfAction}>
+                    <ThemedText type="smallBold" style={{ color: colors.tint }}>
+                      Remplacer
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  disabled={pdfBusy}
+                  onPress={handlePickPdf}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.pdfButton,
+                    { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.8 : 1 },
+                  ]}>
+                  {pdfBusy ? (
+                    <ActivityIndicator color={colors.tint} />
+                  ) : (
+                    <>
+                      <Ionicons name="document-attach-outline" size={18} color={colors.text} />
+                      <ThemedText type="smallBold">Choisir un PDF</ThemedText>
+                    </>
+                  )}
+                </Pressable>
+              )}
+              {pdfError ? (
+                <ThemedText style={[styles.fieldError, { color: RedColor[mode] }]}>
+                  {pdfError}
+                </ThemedText>
+              ) : null}
+            </View>
+          ) : null}
         </ScrollView>
 
         <View style={[styles.actionBar, { borderTopColor: colors.backgroundSelected }]}>
@@ -448,6 +557,28 @@ const styles = StyleSheet.create({
   banner: {
     borderRadius: Spacing.two,
     padding: Spacing.three,
+  },
+  pdfRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    minHeight: 44,
+  },
+  pdfName: {
+    flex: 1,
+  },
+  pdfAction: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.one,
+  },
+  pdfButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    minHeight: 48,
+    borderRadius: Spacing.two,
   },
   centered: {
     flex: 1,

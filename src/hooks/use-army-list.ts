@@ -13,6 +13,8 @@ export type ArmyList = {
   organizer_comment: string | null;
   submitted_at: string;
   reviewed_at: string | null;
+  /** Chemin du PDF joint dans le bucket privé, ou null. */
+  pdf_path: string | null;
 };
 
 /**
@@ -32,7 +34,7 @@ export function useArmyList(registrationId: string | undefined) {
     }
     const { data } = await supabase
       .from('army_lists')
-      .select('id, registration_id, content, faction, status, organizer_comment, submitted_at, reviewed_at')
+      .select('id, registration_id, content, faction, status, organizer_comment, submitted_at, reviewed_at, pdf_path')
       .eq('registration_id', registrationId)
       .maybeSingle<ArmyList>();
     setList(data ?? null);

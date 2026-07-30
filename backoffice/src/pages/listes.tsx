@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Toast } from '../components/toast';
 import type { TournamentWithCount } from '../hooks/use-my-tournaments';
 import { useArmyLists, type ListEntry } from '../hooks/use-army-lists';
+import { supabase } from '../lib/supabase';
 import { formatEventDateShort } from '../lib/tournaments';
 
 type Filter = 'todo' | 'approved' | 'rejected' | 'missing' | 'all';
@@ -464,6 +465,26 @@ export function ListesPage({ tournament, tournamentLoading, tournamentError }: P
             </div>
 
             <div className="drawer-body">
+              {openEntry.list.pdf_path ? (
+                <button
+                  className="btn btn-secondary"
+                  style={{ marginBottom: 16 }}
+                  onClick={async () => {
+                    if (!supabase || !openEntry.list?.pdf_path) return;
+                    // URL signée : le bucket est privé, le lien expire vite.
+                    const { data } = await supabase.storage
+                      .from('army-lists')
+                      .createSignedUrl(openEntry.list.pdf_path, 300);
+                    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                    else
+                      setToast({
+                        message: 'Impossible d’ouvrir le PDF. Réessayez.',
+                        variant: 'danger',
+                      });
+                  }}>
+                  Ouvrir le PDF joint
+                </button>
+              ) : null}
               <pre className="drawer-list">{openEntry.list.content}</pre>
             </div>
 

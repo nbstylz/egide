@@ -13,6 +13,8 @@ export type ArmyListRow = {
   organizer_comment: string | null;
   submitted_at: string;
   reviewed_at: string | null;
+  /** Chemin du PDF joint dans le bucket privé, ou null. */
+  pdf_path: string | null;
 };
 
 /** Une inscription active accompagnée de sa liste (ou de son absence). */
@@ -42,7 +44,7 @@ export function useArmyLists(tournamentId: string | undefined) {
     const { data, error: dbError } = await supabase
       .from('army_lists')
       .select(
-        'id, registration_id, content, faction, status, organizer_comment, submitted_at, reviewed_at, registration:registrations!inner(tournament_id)'
+        'id, registration_id, content, faction, status, organizer_comment, submitted_at, reviewed_at, pdf_path, registration:registrations!inner(tournament_id)'
       )
       .eq('registration.tournament_id', tournamentId);
     if (dbError) {

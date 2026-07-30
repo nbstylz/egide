@@ -414,7 +414,10 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
   3. La fiche événement indique au joueur l'état de sa liste (non soumise / soumise / validée / refusée).
 - **Taille : M** — **Dépendances :** US-2.3.
 
-### US-5.2 — Joindre un PDF
+### US-5.2 — Joindre un PDF — ✅ Livrée (2026-07-30)
+> Migration 0020 : bucket privé `army-lists` (5 Mo, PDF uniquement), chemin conventionnel `<registration_id>.pdf` qui rend les politiques Storage vérifiables : dépôt réservé au joueur (tournoi ouvert, liste non validée), lecture réservée au joueur et à l'organisateur. Le PDF s'ajoute à la liste texte, il ne la remplace pas.
+> Mobile : bloc « Ou joindre un PDF » sur l'écran de saisie (choisir / remplacer / retirer). Back office : « Ouvrir le PDF joint » dans le panneau de relecture, via URL signée de 5 minutes.
+> Politiques vérifiées par 6 assertions SQL (dépôt d'autrui refusé, liste validée figée, lecture par un tiers refusée). L'envoi d'octets réels passe par supabase-js standard — un essai sur appareil réel reste conseillé avant le premier tournoi.
 **En tant que** joueur, **je veux** joindre ma liste en PDF **afin d'** utiliser l'export de mon outil de création de listes.
 - Critères :
   1. Upload d'un PDF vers Supabase Storage (bucket privé, taille max définie, ex. 5 Mo).
