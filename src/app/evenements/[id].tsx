@@ -512,6 +512,9 @@ export default function EvenementDetailScreen() {
                 onSeeTables={() =>
                   router.push({ pathname: '/evenements/[id]/tables', params: { id } })
                 }
+                onSeeStandings={() =>
+                  router.push({ pathname: '/evenements/[id]/classement', params: { id } })
+                }
               />
               <MonParcours
                 results={myResults}

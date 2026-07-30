@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import {
   Colors,
   GreenColor,
+  OnTint,
   RedColor,
   Spacing,
   TintBackground,
@@ -30,6 +31,7 @@ type Props = {
   failed: boolean;
   refreshedAt: Date | null;
   onSeeTables: () => void;
+  onSeeStandings: () => void;
 };
 
 /** « 15 – 5 » insécable : le score ne se coupe jamais en fin de ligne. */
@@ -62,6 +64,7 @@ export function JourJCard({
   failed,
   refreshedAt,
   onSeeTables,
+  onSeeStandings,
 }: Props) {
   const scheme = useColorScheme();
   const mode = scheme === 'dark' ? 'dark' : 'light';
@@ -119,6 +122,21 @@ export function JourJCard({
           <Ionicons name="grid-outline" size={16} color={colors.tint} />
           <ThemedText type="smallBold" style={{ color: colors.tint }}>
             {tablesCount === 1 ? 'La table' : `Les ${tablesCount} tables`}
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          onPress={onSeeStandings}
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.action,
+            {
+              backgroundColor: isMatchState ? colors.background : colors.backgroundSelected,
+              opacity: pressed ? 0.8 : 1,
+            },
+          ]}>
+          <Ionicons name="podium-outline" size={16} color={colors.tint} />
+          <ThemedText type="smallBold" style={{ color: colors.tint }}>
+            Classement
           </ThemedText>
         </Pressable>
       </View>
@@ -180,13 +198,20 @@ export function JourJCard({
         ) : null}
         <View style={[styles.divider, { backgroundColor: colors.backgroundSelected }]} />
         <Pressable
-          onPress={onSeeTables}
+          onPress={onSeeStandings}
           accessibilityRole="button"
           style={({ pressed }) => [
-            styles.action,
-            { backgroundColor: colors.backgroundSelected, opacity: pressed ? 0.8 : 1 },
+            styles.primaryAction,
+            { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },
           ]}>
-          <Ionicons name="grid-outline" size={16} color={colors.tint} />
+          <ThemedText type="smallBold" style={{ color: OnTint[mode] }}>
+            Voir le classement final
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          onPress={onSeeTables}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.textAction, { opacity: pressed ? 0.8 : 1 }]}>
           <ThemedText type="smallBold" style={{ color: colors.tint }}>
             Revoir les tables
           </ThemedText>
@@ -389,6 +414,18 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     minHeight: 48,
     borderRadius: Spacing.two,
+  },
+  primaryAction: {
+    minHeight: 52,
+    borderRadius: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+  },
+  textAction: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   freshness: {
     textAlign: 'center',

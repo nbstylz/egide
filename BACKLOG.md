@@ -325,8 +325,9 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
   6. **J'ai abandonné** : la section reste affichée avec mes résultats acquis, suivie de la mention d'abandon.
 - **Taille : S** — **Dépendances :** US-3.3.
 
-### US-3.12 — Classement du tournoi sur mobile
-> Note (2026-07-30) : le bloc « Le jour J » (US-3.3) prévoit un bouton « Classement » dans son pied et, tournoi terminé, un bouton primaire « Voir le classement final ». Ils sont **absents tant que cette US n'est pas livrée** — un bouton vers un écran inexistant serait pire que pas de bouton. À rebrancher ici.
+### US-3.12 — Classement du tournoi sur mobile — ✅ Livrée (2026-07-30)
+> Écran `src/app/evenements/[id]/classement.tsx` alimenté par `tournament_standings` (aucun recalcul de rang côté app), accessible sans connexion. Quatre zones par ligne (rang, joueur, bilan V–N–D, points) — différentiel et tactiques renvoyés à la modale des départages, illisibles sur 375 px. Ma ligne dorée, et épinglée en bas quand elle sort de l'écran (tap = y défiler). Les six départages dans une modale, texte repris du back office mot pour mot. Boutons « Classement » rebranchés dans le bloc « Le jour J ».
+> Badge abandon en v1 : « Abandon » sans numéro de ronde — `tournament_standings` ne renvoie que le booléen. Amélioration notée : exposer `dropped_round` dans la fonction pour afficher « Abandon · R2 ».
 **En tant que** joueur, **je veux** consulter le classement mis à jour après chaque ronde **afin de** savoir où j'en suis et contre qui je risque de tomber.
 - Critères :
   1. Écran « Classement » accessible depuis la fiche événement dès qu'un score est saisi, alimenté par `tournament_standings(tournament_id)` (migration 0010) — aucun calcul refait côté app.
@@ -339,7 +340,9 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
 - **Note :** cette US clôt le critère 3 de US-3.7, jusqu'ici couvert seulement par le back office.
 - **Taille : M** — **Dépendances :** US-3.5 (livrée), US-3.3.
 
-### US-3.13 — Classement final et podium après clôture
+### US-3.13 — Classement final et podium après clôture — ✅ Livrée (2026-07-30) sauf critère 5
+> Podium à trois cartes en tête du classement final (ordre de lecture 1-2-3, pas de « marches » fragiles sur 375 px), 1ᵉʳ sur fond doré avec trophée, les trois premiers restent aussi dans la liste — une seule source de vérité. La synthèse « Tu termines Nᵉ » vit dans le bloc « Le jour J », pas ici (doublon).
+> **Critère 5 non couvert** : l'annuaire masque toujours les tournois passés, un tournoi terminé n'est atteignable que par lien ou depuis « mes inscriptions » à venir. À traiter avec un filtre « Passés » dans l'annuaire (petite US dédiée).
 **En tant que** joueur, **je veux** voir le résultat définitif du tournoi et le podium **afin de** conserver et partager ma performance.
 - Critères :
   1. Dès que le tournoi passe en « terminé » (`close_tournament`, migration 0013), l'écran de classement affiche en tête le **podium (top 3)** et le titre « Classement final ».
