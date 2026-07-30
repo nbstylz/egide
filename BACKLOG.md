@@ -272,31 +272,35 @@ EGIDE est l'application de référence de la scène compétitive francophone War
 **Objectif :** créer/rejoindre une équipe, roster, capitaine — sans tournois par équipes (phase 2).
 **Valeur utilisateur :** les équipes existent, se structurent et fidélisent leurs membres dès le MVP.
 
-### US-4.1 — Tables `teams` et `team_members`
+### US-4.1 — Tables `teams` et `team_members` — ✅ Livrée (2026-07-30)
 **En tant que** joueur, **je veux** que les équipes soient stockées en base **afin de** construire les écrans dessus.
 - Critères :
   1. Migration : `teams` (nom, description, capitaine, région) et `team_members` (équipe, joueur, rôle capitaine/membre) avec RLS.
   2. Un joueur ne peut être qu'une fois membre d'une même équipe (contrainte d'unicité).
   3. Lecture publique des équipes ; écriture selon le rôle.
 - **Taille : S** — **Dépendances :** aucune (parallélisable avec EPIC-1 à 3).
+- Notes de livraison : migrations `0015_teams.sql` et `0016_protect_invite_code.sql`. Aucune écriture directe n'est autorisée : tout passe par des fonctions `security definer` (`create_team`, `join_team`, `leave_team`, `transfer_captaincy`, `disband_team`, `regenerate_invite_code`). RLS seule ne suffisait pas pour le code d'invitation — elle filtre les lignes, pas les colonnes — d'où des GRANT par colonne sur `teams` et une fonction `get_invite_code()` réservée au capitaine. 13 assertions SQL passées.
 
-### US-4.2 — Créer une équipe
+### US-4.2 — Créer une équipe — ✅ Livrée (2026-07-30)
 **En tant que** joueur, **je veux** créer mon équipe depuis l'onglet Équipes **afin d'** en devenir le capitaine.
 - Critères :
   1. Formulaire : nom (unique), description, région.
   2. Le créateur devient automatiquement capitaine et membre.
   3. L'équipe apparaît dans l'onglet Équipes (« Mon équipe » + annuaire des équipes).
 - **Taille : M** — **Dépendances :** US-4.1.
+- Notes de livraison : écran `src/app/equipes/creer.tsx`. La région est préremplie depuis le profil. Le nom déjà pris s'affiche sous le champ, pas dans un bandeau.
 
-### US-4.3 — Rejoindre une équipe par code d'invitation
+### US-4.3 — Rejoindre une équipe par code d'invitation — ✅ Livrée (2026-07-30)
 **En tant que** joueur, **je veux** rejoindre une équipe via un code partagé par le capitaine **afin d'** intégrer mon groupe sans procédure lourde.
 - Critères :
   1. Chaque équipe possède un code d'invitation court que le capitaine peut afficher et régénérer.
   2. Un champ « Rejoindre avec un code » ajoute le joueur au roster.
   3. Code invalide → message d'erreur clair.
 - **Taille : M** — **Dépendances :** US-4.2.
+- Notes de livraison : le code se saisit dans six cases (`join-code-input.tsx`) et part dès le 6ᵉ caractère, sans bouton. L'alphabet exclut O/0, I/1 et L, donc `normalizeCode` se contente d'ignorer ce qui n'en fait pas partie — un « ABC-DEF » dicté au téléphone passe tel quel. Sans `maxLength` sur le champ natif : les séparateurs tapés y restent et mangeraient le quota de 6 (le dernier caractère était perdu).
+- Reste à faire : partager le code par lien profond (`egide://equipes/rejoindre?code=…`) plutôt que par texte seul.
 
-### US-4.4 — Gestion du roster par le capitaine
+### US-4.4 — Gestion du roster par le capitaine — ✅ Livrée (2026-07-30)
 **En tant que** capitaine, **je veux** gérer mon roster **afin de** garder une équipe à jour.
 - Critères :
   1. Le capitaine peut retirer un membre (confirmation) et transférer le capitanat.
@@ -304,6 +308,7 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   3. Le capitaine peut dissoudre l'équipe (confirmation, suppression logique).
   4. Les membres non-capitaines ne voient pas ces actions (et la RLS les bloque).
 - **Taille : M** — **Dépendances :** US-4.3.
+- Notes de livraison : les actions destructrices passent par une double pression (`confirm-button.tsx`) qui énonce la conséquence avant de s'armer, et se désarme au bout de 5 s — même comportement sur mobile et sur web, là où une `Alert` native n'aurait marché que sur mobile. La dissolution est bien une suppression réelle (cascade sur `team_members`), pas logique comme l'énonçait le critère 3 : une équipe dissoute n'a pas d'historique à préserver tant que les tournois par équipes (EPIC-7) n'existent pas.
 
 ---
 
