@@ -257,6 +257,31 @@ export function RondesPage({
   }, [pairings, search, scoreFilter, keptIds, saved]);
 
   /**
+   * Appariements avec les scores fraîchement saisis. Ils vivent dans `saved`,
+   * pas dans `pairings` : la saisie n'est volontairement pas suivie d'un
+   * rechargement (le tableau clignotait et perdait le focus). Sans cette
+   * fusion, la modale de clôture annonçait « 3 égalités » sur trois tables
+   * au vainqueur net.
+   */
+  const freshPairings = useMemo(
+    () =>
+      pairings.map((pairing) => {
+        const draft = saved[pairing.id];
+        if (!draft) return pairing;
+        const value = (text: string, fallback: number | null) =>
+          text === '' ? fallback : Number(text);
+        return {
+          ...pairing,
+          score_a: value(draft.a, pairing.score_a),
+          score_b: value(draft.b, pairing.score_b),
+          tactics_a: value(draft.ta, pairing.tactics_a),
+          tactics_b: value(draft.tb, pairing.tactics_b),
+        };
+      }),
+    [pairings, saved]
+  );
+
+  /**
    * Répartition des joueurs par nombre de victoires après cette ronde.
    * Sert à annoncer les groupes de score dans la confirmation de clôture.
    */
@@ -264,7 +289,7 @@ export function RondesPage({
     const tally = new Map<string, number>();
     const add = (pseudo: string, value: number) =>
       tally.set(pseudo, (tally.get(pseudo) ?? 0) + value);
-    for (const pairing of pairings) {
+    for (const pairing of freshPairings) {
       const a = pairing.player_a?.pseudo;
       const b = pairing.player_b?.pseudo;
       if (!a) continue;
@@ -292,7 +317,7 @@ export function RondesPage({
     return [...counts.entries()]
       .map(([wins, count]) => ({ wins, count }))
       .sort((x, y) => y.wins - x.wins);
-  }, [pairings]);
+  }, [freshPairings]);
 
   function clearKept() {
     if (keptIds.size > 0) setKeptIds(new Set());
@@ -1414,7 +1439,7 @@ export function RondesPage({
           tournamentId={tournament.id}
           roundNumber={selectedNumber}
           roundsCount={tournament.rounds_count}
-          pairings={pairings}
+          pairings={freshPairings}
           groups={winGroups}
           playersLeft={playersLeft}
           onCancel={() => setCloseOpen(false)}
