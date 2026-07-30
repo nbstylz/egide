@@ -56,7 +56,7 @@ export function useMyTournaments(userId: string | undefined) {
  * Liste publique des événements à venir (statut « inscriptions ouvertes »
  * ou « en cours »), triés par date croissante.
  */
-export function useUpcomingEvents() {
+export function useUpcomingEvents(past = false) {
   const [events, setEvents] = useState<TournamentWithCount[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,17 +67,20 @@ export function useUpcomingEvents() {
       return;
     }
     setLoading(true);
-    // Les tournois passés n'apparaissent pas (date du jour incluse).
     const today = new Date().toISOString().slice(0, 10);
-    const { data } = await supabase
-      .from('tournaments')
-      .select('*, registrations(status)')
-      .in('status', ['open', 'in_progress'])
-      .gte('event_date', today)
-      .order('event_date', { ascending: true });
+    const query = supabase.from('tournaments').select('*, registrations(status)');
+    const { data } = past
+      ? // Passés : les tournois terminés, du plus récent au plus ancien —
+        // on y cherche un résultat, pas une inscription.
+        await query.eq('status', 'completed').order('event_date', { ascending: false })
+      : // À venir : les tournois où il se passe encore quelque chose.
+        await query
+          .in('status', ['open', 'in_progress'])
+          .gte('event_date', today)
+          .order('event_date', { ascending: true });
     setEvents(withCount(data as Row[] | null));
     setLoading(false);
-  }, []);
+  }, [past]);
 
   useEffect(() => {
     refresh();

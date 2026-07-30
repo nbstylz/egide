@@ -342,7 +342,7 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
 
 ### US-3.13 — Classement final et podium après clôture — ✅ Livrée (2026-07-30) sauf critère 5
 > Podium à trois cartes en tête du classement final (ordre de lecture 1-2-3, pas de « marches » fragiles sur 375 px), 1ᵉʳ sur fond doré avec trophée, les trois premiers restent aussi dans la liste — une seule source de vérité. La synthèse « Tu termines Nᵉ » vit dans le bloc « Le jour J », pas ici (doublon).
-> **Critère 5 non couvert** : l'annuaire masque toujours les tournois passés, un tournoi terminé n'est atteignable que par lien ou depuis « mes inscriptions » à venir. À traiter avec un filtre « Passés » dans l'annuaire (petite US dédiée).
+> ~~Critère 5 non couvert~~ **Couvert le 2026-07-30** : période « Passés » dans les filtres de l'annuaire — la requête bascule sur les tournois terminés, du plus récent au plus ancien, et les cartes affichent « Terminé » à la place des places restantes. L'US-3.13 est entièrement livrée.
 **En tant que** joueur, **je veux** voir le résultat définitif du tournoi et le podium **afin de** conserver et partager ma performance.
 - Critères :
   1. Dès que le tournoi passe en « terminé » (`close_tournament`, migration 0013), l'écran de classement affiche en tête le **podium (top 3)** et le titre « Classement final ».

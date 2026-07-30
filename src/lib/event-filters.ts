@@ -1,7 +1,7 @@
 import { endOfMonthIso, inDaysIso, parseFrenchDate, todayIso } from '@/lib/dates';
 import type { TournamentWithCount } from '@/hooks/use-tournaments';
 
-export type PeriodKey = 'upcoming' | 'this_month' | 'three_months' | 'custom';
+export type PeriodKey = 'upcoming' | 'this_month' | 'three_months' | 'past' | 'custom';
 export type TypeFilter = 'all' | 'individual' | 'team';
 
 export type EventFilters = {
@@ -31,6 +31,7 @@ export const PeriodLabels: Record<PeriodKey, string> = {
   upcoming: 'À venir',
   this_month: 'Ce mois-ci',
   three_months: '3 prochains mois',
+  past: 'Passés',
   custom: 'Dates précises',
 };
 

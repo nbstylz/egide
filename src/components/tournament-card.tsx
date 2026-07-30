@@ -88,7 +88,14 @@ export function EventCard({
   const scarce = !full && (remaining <= 4 || remaining <= tournament.capacity * 0.2);
 
   let placesContent;
-  if (full) {
+  if (tournament.status === 'completed' || tournament.status === 'in_progress') {
+    // Passé ou en cours : plus rien à réserver, on annonce l'état du tournoi.
+    placesContent = (
+      <ThemedText type="smallBold" themeColor="textSecondary">
+        {tournament.status === 'completed' ? 'Terminé' : 'En cours'}
+      </ThemedText>
+    );
+  } else if (full) {
     placesContent = (
       <View style={[styles.fullBadge, { backgroundColor: RedBackground[mode] }]}>
         <ThemedText type="smallBold" style={[styles.fullBadgeText, { color: RedColor[mode] }]}>

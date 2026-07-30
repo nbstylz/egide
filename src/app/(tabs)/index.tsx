@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -33,11 +33,18 @@ import {
 export default function EvenementsScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
-  const { events, loading, refresh } = useUpcomingEvents();
+  // « Passés » change la requête elle-même (statut terminé, tri inverse) :
+  // on reflète la période des filtres dans un état dédié.
+  const [past, setPast] = useState(false);
+  const { events, loading, refresh } = useUpcomingEvents(past);
   const { session } = useSession();
   const { profile } = useProfile(session?.user.id);
   const { filters, setFilters, persist, reset } = useEventFilters(events);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    setPast(filters.period === 'past');
+  }, [filters.period]);
 
   // Recharge quand on revient sur l'onglet (nouveaux tournois publiés).
   useFocusEffect(

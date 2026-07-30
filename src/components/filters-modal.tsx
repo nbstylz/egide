@@ -34,7 +34,7 @@ import {
 const ErrorColor = { light: '#D14343', dark: '#FF6369' };
 /** Au-delà, on propose un champ de recherche de région. */
 const RegionSearchThreshold = 12;
-const Periods: PeriodKey[] = ['upcoming', 'this_month', 'three_months', 'custom'];
+const Periods: PeriodKey[] = ['upcoming', 'this_month', 'three_months', 'past', 'custom'];
 
 type Props = {
   visible: boolean;
