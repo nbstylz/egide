@@ -40,6 +40,7 @@ import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
 import { useTournamentDetail, visibleSlice } from '@/hooks/use-tournament-detail';
 import { ordinalFr } from '@/lib/ordinal';
+import { registerForPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 import { formatEventDate, TypeLabels } from '@/lib/tournaments';
 
@@ -169,6 +170,11 @@ export default function EvenementDetailScreen() {
           ? 'Impossible de rejoindre la liste d’attente. Vérifie ta connexion et réessaie.'
           : 'Impossible de finaliser l’inscription. Vérifie ta connexion et réessaie.'
       );
+    } else {
+      // Le bon moment pour demander les notifications : le joueur vient de
+      // s'engager, il a une raison d'être prévenu. Jamais au premier
+      // lancement. Sans suite bloquante — un refus se gère en silence.
+      registerForPush(session.user.id);
     }
     await refresh();
     setBusy(false);

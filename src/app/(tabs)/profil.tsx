@@ -10,6 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
+import { registerForPush } from '@/lib/push';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 export default function ProfilScreen() {
@@ -18,6 +19,35 @@ export default function ProfilScreen() {
   const { session, loading } = useSession();
   const { profile, loading: profileLoading, refresh } = useProfile(session?.user.id);
   const [editing, setEditing] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMessage, setPushMessage] = useState<string | null>(null);
+
+  /** Enregistre l'appareil puis demande une notification de test. */
+  async function handlePushTest() {
+    if (!supabase || !session) return;
+    setPushBusy(true);
+    setPushMessage(null);
+    const status = await registerForPush(session.user.id);
+    if (status === 'unavailable') {
+      setPushMessage(
+        'Les notifications demandent l’app installée sur un téléphone (pas le navigateur).'
+      );
+    } else if (status === 'denied') {
+      setPushMessage(
+        'Notifications refusées. Tu peux les réactiver dans les réglages du téléphone.'
+      );
+    } else {
+      const { error } = await supabase.functions.invoke('send-push', {
+        body: { test: true },
+      });
+      setPushMessage(
+        error
+          ? 'Impossible d’envoyer la notification de test. Réessaie.'
+          : 'Notification de test envoyée — elle arrive dans quelques secondes.'
+      );
+    }
+    setPushBusy(false);
+  }
 
   let content;
   if (!isSupabaseConfigured) {
@@ -85,6 +115,24 @@ export default function ProfilScreen() {
           onPress={() => setEditing(true)}>
           <ThemedText style={styles.buttonPrimaryText}>Modifier mon profil</ThemedText>
         </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.button,
+            { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.8 : 1 },
+          ]}
+          disabled={pushBusy}
+          onPress={handlePushTest}>
+          {pushBusy ? (
+            <ActivityIndicator color={colors.tint} />
+          ) : (
+            <ThemedText>Tester les notifications</ThemedText>
+          )}
+        </Pressable>
+        {pushMessage ? (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.centeredText}>
+            {pushMessage}
+          </ThemedText>
+        ) : null}
         <Pressable
           style={({ pressed }) => [
             styles.button,

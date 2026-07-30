@@ -443,7 +443,9 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
 **Objectif :** les notifications « essentielles » de la phase 1 du cahier des charges, en fin de MVP conformément à la décision produit (« prévu mais pas prioritaire »).
 **Valeur utilisateur :** le joueur est prévenu au bon moment sans garder l'app ouverte.
 
-### US-6.1 — Infrastructure de notifications
+### US-6.1 — Infrastructure de notifications — 🔶 Codée (2026-07-30), test téléphone en attente
+> Migration 0021 (`push_tokens`, RLS par joueur), `src/lib/push.ts` (`registerForPush` : permission demandée **après une inscription à un tournoi**, jamais au premier lancement ; refus et absence de support gérés sans crash), Edge Function `send-push` (mode `{ test: true }` vers soi-même avec JWT ; envoi ciblé réservé à la clé service ; jetons morts purgés). Bouton « Tester les notifications » dans le Profil. `projectId` EAS inscrit dans app.json.
+> **Critère 3 non vérifié** : il faut un vrai téléphone ET un development build (`eas build --profile development`) — depuis le SDK 53, Expo Go ne reçoit plus les push distantes. À faire par le porteur du projet : `eas login`, build, installer, puis « Tester les notifications ».
 **En tant que** joueur, **je veux** autoriser les notifications **afin de** recevoir les alertes du tournoi.
 - Critères :
   1. Demande de permission au bon moment (pas au premier lancement) ; token Expo Push stocké en base lié au profil.

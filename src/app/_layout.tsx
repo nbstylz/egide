@@ -3,8 +3,10 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { configureNotificationHandler } from '@/lib/push';
 
 SplashScreen.preventAutoHideAsync();
+configureNotificationHandler();
 
 /**
  * Racine de l'app : une pile (Stack) qui contient les onglets, et au-dessus
