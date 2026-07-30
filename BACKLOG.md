@@ -175,14 +175,20 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   4. Impossible de lancer avec moins de 2 joueurs checked-in.
 - **Taille : L** — **Dépendances :** US-3.1.
 
-### US-3.3 — Écran des appariements de la ronde
-**En tant que** joueur, **je veux** voir ma table et mon adversaire dès la publication de la ronde **afin de** m'installer sans attendre l'annonce micro.
+### US-3.3 — Mon match de la ronde en cours (app mobile)
+**En tant que** joueur inscrit, **je veux** voir sur la fiche du tournoi à quelle table je joue et contre qui **afin de** m'installer sans attendre l'annonce micro ni faire la queue devant l'écran de projection.
 - Critères :
-  1. La fiche du tournoi (côté joueur) affiche la ronde en cours : liste table / joueur A vs joueur B.
-  2. Mon propre appariement est mis en évidence en haut de l'écran.
-  3. Le bye est affiché clairement le cas échéant.
-  4. Lecture seule pour les joueurs.
-- **Taille : S** — **Dépendances :** US-3.2.
+  1. Un bloc « Le jour J » apparaît sur la fiche événement (`src/app/evenements/[id].tsx`), **au-dessus** des cartes Format et Participants, dès que le tournoi n'est plus en statut « inscriptions ouvertes ». Lecture seule : aucune écriture en base depuis l'app mobile.
+  2. **Tournoi pas encore lancé** : le bloc n'apparaît pas ; la fiche reste telle qu'aujourd'hui.
+  3. **Ronde en cours, je suis apparié** : « Ronde X sur Y », le **numéro de table**, le **pseudo de l'adversaire** et sa faction favorite. Le numéro de table est l'élément le plus lisible de l'écran — c'est ce qu'on cherche en marchant.
+  4. **J'ai le bye** : « Tu as le bye à la ronde X », avec « Pas d'adversaire ce tour-ci : tu remportes la ronde 15 – 5 ». Aucun numéro de table, aucun nom d'adversaire (`player_b_id` vaut `null`).
+  5. **Score de ma table déjà saisi** : mon résultat (« Victoire 18 – 12 » / « Défaite » / « Égalité ») et « En attente de la ronde suivante ».
+  6. **J'ai abandonné** (`registrations.status = 'dropped'`) : bandeau neutre « Tu as abandonné à la ronde N » (colonne `dropped_round`) et « Tes résultats des rondes 1 à N-1 restent acquis au classement ». Aucun appariement.
+  7. **Tournoi terminé** : « Tournoi terminé » et renvoi vers le classement final (US-3.13).
+  8. **Pas inscrit, pas connecté, ou en liste d'attente** : seulement « Tournoi en cours — ronde X sur Y » et un renvoi vers les tables (US-3.10), sans bloc personnel.
+  9. **Correction obligatoire :** ajouter `'dropped'` au type `RegistrationStatus` de `src/lib/tournaments.ts`. Aujourd'hui un joueur qui abandonne disparaît de la liste des inscrits sur mobile et fait baisser le compteur d'inscrits en plein tournoi.
+  10. « Tirer pour rafraîchir » recharge le bloc. Pas de temps réel en v1 : le joueur regarde son téléphone au moment où l'organisateur annonce la ronde.
+- **Taille : M** — **Dépendances :** US-3.2 (lecture publique de `pairings` déjà autorisée par la RLS de la migration 0008), US-2.3.
 
 ### US-3.4 — Saisie des scores par l'organisateur — ✅ Livrée (2026-07-26)
 > Saisie directement dans le tableau de la page Rondes, pensée pour le clavier : deux champs par table, `Entrée` passe au champ suivant puis à la table suivante encore à saisir, `Échap` annule la ligne, flèches haut/bas pour changer de ligne.
@@ -228,7 +234,9 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   5. Blocage propre si le nombre de rondes configuré est atteint.
 - **Taille : L** — **Dépendances :** US-3.4.
 
-### US-3.7 — Tie-breakers standards
+### US-3.7 — Tie-breakers standards — ✅ Livrée pour l'essentiel (2026-07-26)
+> Les six départages sont implémentés (migrations 0010 et 0013) et expliqués dans le back office par le dépliant « pourquoi suis-je Nᵉ ? ». **Reste le critère 3 côté joueur** : la règle n'est visible nulle part dans l'app mobile — traité par US-3.12.
+
 **En tant qu'** organisateur, **je veux** un départage conforme aux standards AOS **afin que** le classement final soit incontestable.
 - Critères :
   1. Ordre de départage implémenté et affiché dans l'app (ex. : points de tournoi → SoS → points de partie).
@@ -264,6 +272,58 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   3. Plus aucune modification de score possible après clôture.
   4. Le tournoi terminé reste consultable (résultats publics).
 - **Taille : S** — **Dépendances :** US-3.7.
+
+### Le tournoi vécu côté joueur (app mobile)
+
+Les US ci-dessous complètent l'EPIC-3 : le déroulé existe côté organisateur (back office), il reste à l'exposer **en lecture seule** aux joueurs. Aucune écriture, aucune nouvelle migration — `rounds`, `pairings` et `tournament_standings()` sont déjà lisibles publiquement.
+
+L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leur table et le classement en direct sur leur téléphone ». Tant que ce lot n'est pas livré, le pilier 1 du cahier des charges (classement en temps réel *dans l'app*) ne l'est pas non plus.
+
+### US-3.10 — Toutes les tables de la ronde
+**En tant que** joueur, **je veux** consulter l'ensemble des appariements de la ronde **afin de** savoir où jouent mes amis et suivre les tables du haut de tableau.
+- Critères :
+  1. Depuis le bloc « Le jour J », un lien « Voir les N tables » ouvre un écran dédié, accessible **sans être inscrit et sans être connecté** (la RLS de `pairings` autorise déjà la lecture publique).
+  2. Liste triée par numéro de table : table N, joueur A vs joueur B, et le score quand il est saisi.
+  3. **Ma ligne est mise en évidence** et l'écran s'ouvre positionné dessus si je suis apparié.
+  4. La ligne du bye est distincte : « Table N — Pseudo — bye (15 – 5) », sans faux adversaire.
+  5. Un sélecteur permet de revenir aux rondes précédentes ; les rondes non générées ne sont pas proposées.
+  6. **Tournoi pas lancé** : écran non atteignable. **Tournoi terminé** : toutes les rondes restent consultables.
+  7. Recherche par pseudo qui répond « Julien joue à la table 7, contre Sarah » — même comportement que la page Rondes du back office.
+- **Taille : S** — **Dépendances :** US-3.3.
+
+### US-3.11 — Mon parcours dans le tournoi
+**En tant que** joueur, **je veux** revoir mes rondes précédentes avec mes adversaires et mes scores **afin de** vérifier ma journée sans reprendre l'écran de projection.
+- Critères :
+  1. Dans le bloc « Le jour J », une section « Mon parcours » : une ligne par ronde jouée — numéro, adversaire, mon score – son score, issue (Victoire / Défaite / Égalité).
+  2. Les données viennent de la vue `player_results` (migration 0010) filtrée sur mon `player_id` : aucune logique « joueur A / joueur B » à réécrire côté app.
+  3. Le bye apparaît comme « Ronde X — Bye — 15 – 5 ».
+  4. Pied de section : victoires / nuls / défaites et points marqués cumulés.
+  5. **Aucune ronde jouée** : la section n'apparaît pas.
+  6. **J'ai abandonné** : la section reste affichée avec mes résultats acquis, suivie de la mention d'abandon.
+- **Taille : S** — **Dépendances :** US-3.3.
+
+### US-3.12 — Classement du tournoi sur mobile
+**En tant que** joueur, **je veux** consulter le classement mis à jour après chaque ronde **afin de** savoir où j'en suis et contre qui je risque de tomber.
+- Critères :
+  1. Écran « Classement » accessible depuis la fiche événement dès qu'un score est saisi, alimenté par `tournament_standings(tournament_id)` (migration 0010) — aucun calcul refait côté app.
+  2. Chaque ligne : rang, pseudo, victoires/nuls/défaites, points marqués. **Ma ligne est mise en évidence** et reste visible même hors de la zone affichée (ligne épinglée en bas).
+  3. Les joueurs ayant abandonné portent un badge neutre « Abandon · RN » et **ne sont pas déclassés**.
+  4. Les six départages sont consultables (« Comment est calculé ce classement ? ») : victoires → points marqués → tactiques → différentiel → force des adversaires → tirage au sort stable. Reprendre le texte du back office, ne pas réinventer la règle.
+  5. **Aucun score saisi** : « Le classement apparaîtra après les premiers résultats », pas de tableau vide.
+  6. Visible par tous, y compris les visiteurs non connectés.
+  7. « Tirer pour rafraîchir » recharge le classement.
+- **Note :** cette US clôt le critère 3 de US-3.7, jusqu'ici couvert seulement par le back office.
+- **Taille : M** — **Dépendances :** US-3.5 (livrée), US-3.3.
+
+### US-3.13 — Classement final et podium après clôture
+**En tant que** joueur, **je veux** voir le résultat définitif du tournoi et le podium **afin de** conserver et partager ma performance.
+- Critères :
+  1. Dès que le tournoi passe en « terminé » (`close_tournament`, migration 0013), l'écran de classement affiche en tête le **podium (top 3)** et le titre « Classement final ».
+  2. La fiche événement affiche « Terminé — vainqueur : Pseudo » et un accès direct au classement final ; le bloc « Le jour J » n'affiche plus d'appariement.
+  3. Si j'ai joué, une ligne de synthèse : « Tu termines Nᵉ sur M, avec X victoires ».
+  4. Rondes et scores restent consultables (US-3.10, US-3.11) en lecture seule.
+  5. Un tournoi terminé doit rester atteignable : l'annuaire masque aujourd'hui les tournois passés. Prévoir au minimum un accès depuis « mes inscriptions » ou un filtre « Passés » — sans transformer cela en refonte de l'annuaire.
+- **Taille : S** — **Dépendances :** US-3.12, US-3.9 (livrée).
 
 ---
 
@@ -464,3 +524,7 @@ npm --prefix backoffice run dev
 4. **Protocole d'appariement capitaines non spécifié** (ordre des picks, formats 3 vs 5–8) : à préciser avant la conception de l'EPIC-7.
 5. **README générique.** Le README est encore celui par défaut d'Expo — amélioration non bloquante : le remplacer par une présentation d'EGIDE.
 6. **Saisie des scores par les joueurs eux-mêmes** (avec confirmation de l'adversaire) : pratique courante en tournoi mais absente du cahier des charges. Volontairement exclue du MVP (l'organisateur saisit) — à noter pour une phase ultérieure si souhaité.
+7. **Scénario de ronde absent du modèle.** En tournoi AOS chaque ronde se joue sur un scénario GHB annoncé, or la table `rounds` (migration 0008) n'a aucun champ pour cela — ni le back office ni les US-3.10/3.13 ne l'affichent. **Question à l'expert AOS** : faut-il l'ajouter (US supplémentaire, côté organisateur d'abord) ou l'annonce orale suffit-elle en v1 ?
+8. **Publication des appariements.** Certains organisateurs ne publient les tables qu'au coup d'envoi de la ronde. **Question à l'expert AOS** : faut-il un bouton « publier la ronde » côté back office, ou l'affichage immédiat convient-il ? US-3.3 et US-3.10 supposent aujourd'hui l'affichage immédiat.
+9. **Temps réel écarté du MVP.** Les écrans joueur se rafraîchissent en tirant vers le bas, sans Supabase Realtime : dix fois moins coûteux à livrer et à tester, pour un usage où le joueur consulte son téléphone au moment de l'annonce. À reconsidérer si l'usage montre le contraire.
+10. **EPIC-6 est bloqué par US-3.3/3.10.** Le critère 2 d'US-6.2 (« un tap sur la notification ouvre l'écran des appariements ») vise un écran qui n'existe pas encore. Les notifications ne peuvent pas être développées avant ce lot.
