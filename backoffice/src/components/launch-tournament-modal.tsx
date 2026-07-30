@@ -12,7 +12,8 @@ type Props = {
   /** Libellé du bouton secondaire, selon la page d'où l'on vient. */
   cancelLabel: string;
   onCancel: () => void;
-  onLaunched: () => void;
+  /** Le scénario saisi est remonté à la page, qui l'écrit après coup. */
+  onLaunched: (scenario: string) => void;
 };
 
 /**
@@ -31,6 +32,7 @@ export function LaunchTournamentModal({
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [scenario, setScenario] = useState('');
 
   const tables = Math.floor(presentCount / 2);
   const isOdd = presentCount % 2 === 1;
@@ -51,7 +53,7 @@ export function LaunchTournamentModal({
       setFailed(true);
       return;
     }
-    onLaunched();
+    onLaunched(scenario);
   }
 
   return (
@@ -81,6 +83,21 @@ export function LaunchTournamentModal({
           {extraNames}
         </div>
       ) : null}
+
+      <label className="field">
+        <span>Scénario de la ronde 1 (facultatif)</span>
+        <input
+          type="text"
+          maxLength={80}
+          placeholder="ex. Focal Points"
+          value={scenario}
+          disabled={busy}
+          onChange={(event) => setScenario(event.target.value)}
+        />
+        <span className="field-hint">
+          Affiché aux joueurs dans l’app. Modifiable ensuite depuis la page Rondes.
+        </span>
+      </label>
 
       <p style={{ margin: 0 }}>
         Une fois le tournoi lancé, les inscriptions et le pointage sont figés.{' '}

@@ -273,6 +273,22 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   4. Le tournoi terminé reste consultable (résultats publics).
 - **Taille : S** — **Dépendances :** US-3.7.
 
+### US-3.14 — Scénario de la ronde — ✅ Livrée (2026-07-30)
+> Migration 0017 : colonne `scenario` sur `rounds` et fonction `set_round_scenario`.
+> Le scénario n'est **pas** un paramètre de `start_tournament` ni de `generate_next_round` : ces deux fonctions sont le chemin critique du jour J, et une saisie facultative ne doit jamais pouvoir faire échouer la création d'une ronde. Les modales le collectent, la page l'écrit une fois la ronde créée ; si cette écriture échoue, la ronde existe quand même et un message renvoie vers le champ de la page.
+> Corrigeable sur n'importe quelle ronde, close ou non, tant que le tournoi n'est pas terminé — le scénario est souvent annoncé après la génération.
+
+**En tant qu'** organisateur, **je veux** indiquer le scénario joué à chaque ronde **afin que** les joueurs sachent quelle mission préparer sans dépendre de l'annonce au micro.
+- Critères :
+  1. Migration : colonne `scenario` (texte, nullable) sur la table `rounds`. Nullable car les rondes déjà jouées n'en ont pas, et un organisateur peut ne pas vouloir le renseigner.
+  2. La modale de lancement (US-3.2) et celle de clôture (US-3.6) proposent un champ « Scénario » facultatif pour la ronde créée. Générer la ronde sans scénario reste possible : ce champ ne doit jamais bloquer le jour J.
+  3. Le scénario est modifiable après coup depuis la page Rondes du back office, tant que le tournoi n'est pas terminé (l'organisateur peut avoir généré la ronde avant de l'avoir décidé).
+  4. Saisie en **texte libre** : la liste officielle change à chaque GHB, une liste figée dans le code vieillirait mal.
+  5. Le scénario s'affiche à côté du numéro de ronde partout où celui-ci apparaît : page Rondes et affichage projection du back office, bloc « Le jour J » et écran des tables côté joueur (US-3.3, US-3.10).
+  6. Une ronde sans scénario n'affiche rien du tout — pas de « Scénario : non renseigné ».
+- **Décision de l'expert AOS (2026-07-30)** : le scénario doit figurer dans l'app, saisi par l'organisateur.
+- **Taille : S** — **Dépendances :** US-3.2 (livrée). À livrer avant US-3.3 pour éviter de repasser sur les écrans joueur.
+
 ### Le tournoi vécu côté joueur (app mobile)
 
 Les US ci-dessous complètent l'EPIC-3 : le déroulé existe côté organisateur (back office), il reste à l'exposer **en lecture seule** aux joueurs. Aucune écriture, aucune nouvelle migration — `rounds`, `pairings` et `tournament_standings()` sont déjà lisibles publiquement.
@@ -524,7 +540,7 @@ npm --prefix backoffice run dev
 4. **Protocole d'appariement capitaines non spécifié** (ordre des picks, formats 3 vs 5–8) : à préciser avant la conception de l'EPIC-7.
 5. **README générique.** Le README est encore celui par défaut d'Expo — amélioration non bloquante : le remplacer par une présentation d'EGIDE.
 6. **Saisie des scores par les joueurs eux-mêmes** (avec confirmation de l'adversaire) : pratique courante en tournoi mais absente du cahier des charges. Volontairement exclue du MVP (l'organisateur saisit) — à noter pour une phase ultérieure si souhaité.
-7. **Scénario de ronde absent du modèle.** En tournoi AOS chaque ronde se joue sur un scénario GHB annoncé, or la table `rounds` (migration 0008) n'a aucun champ pour cela — ni le back office ni les US-3.10/3.13 ne l'affichent. **Question à l'expert AOS** : faut-il l'ajouter (US supplémentaire, côté organisateur d'abord) ou l'annonce orale suffit-elle en v1 ?
-8. **Publication des appariements.** Certains organisateurs ne publient les tables qu'au coup d'envoi de la ronde. **Question à l'expert AOS** : faut-il un bouton « publier la ronde » côté back office, ou l'affichage immédiat convient-il ? US-3.3 et US-3.10 supposent aujourd'hui l'affichage immédiat.
+7. ~~Scénario de ronde absent du modèle.~~ **Tranché le 2026-07-30** : le scénario est saisi par l'organisateur en texte libre → US-3.14.
+8. ~~Publication des appariements.~~ **Tranché le 2026-07-30** : affichage immédiat dès la génération de la ronde, pas de bouton « publier ». Un organisateur qui génère en avance expose donc les tables — accepté, cela évite un état supplémentaire à gérer partout.
 9. **Temps réel écarté du MVP.** Les écrans joueur se rafraîchissent en tirant vers le bas, sans Supabase Realtime : dix fois moins coûteux à livrer et à tester, pour un usage où le joueur consulte son téléphone au moment de l'annonce. À reconsidérer si l'usage montre le contraire.
 10. **EPIC-6 est bloqué par US-3.3/3.10.** Le critère 2 d'US-6.2 (« un tap sur la notification ouvre l'écran des appariements ») vise un écran qui n'existe pas encore. Les notifications ne peuvent pas être développées avant ce lot.

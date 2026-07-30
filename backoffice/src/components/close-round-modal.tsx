@@ -22,7 +22,8 @@ type Props = {
   groups: { wins: number; count: number }[];
   playersLeft: number;
   onCancel: () => void;
-  onClosed: (result: CloseResult) => void;
+  /** Le scénario de la ronde générée est remonté à la page, qui l'écrit après coup. */
+  onClosed: (result: CloseResult, scenario: string) => void;
   /** Ouvre la saisie des tactiques manquantes. */
   onFixTactics: () => void;
 };
@@ -51,6 +52,7 @@ export function CloseRoundModal({
   const [checkedTactics, setCheckedTactics] = useState(false);
   const [checkedUnusual, setCheckedUnusual] = useState(false);
   const [checkedFinal, setCheckedFinal] = useState(false);
+  const [scenario, setScenario] = useState('');
 
   const isLast = roundNumber >= roundsCount;
   const real = pairings.filter((p) => p.player_b !== null);
@@ -93,7 +95,7 @@ export function CloseRoundModal({
       }
       return;
     }
-    onClosed(data as CloseResult);
+    onClosed(data as CloseResult, scenario);
   }
 
   return (
@@ -250,6 +252,24 @@ export function CloseRoundModal({
             Vous pouvez aussi réduire le nombre de rondes prévues dans les réglages du tournoi.
           </div>
         </div>
+      ) : null}
+
+      {/* Pas de scénario à saisir sur la dernière ronde : aucune ne suit. */}
+      {!isLast ? (
+        <label className="field">
+          <span>Scénario de la ronde {roundNumber + 1} (facultatif)</span>
+          <input
+            type="text"
+            maxLength={80}
+            placeholder="ex. Focal Points"
+            value={scenario}
+            disabled={busy}
+            onChange={(event) => setScenario(event.target.value)}
+          />
+          <span className="field-hint">
+            Affiché aux joueurs dans l’app. Modifiable ensuite depuis la page Rondes.
+          </span>
+        </label>
       ) : null}
 
       {error === 'already-closed' ? (

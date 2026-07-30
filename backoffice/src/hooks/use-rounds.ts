@@ -7,6 +7,8 @@ export type Round = {
   number: number;
   status: 'in_progress' | 'completed';
   created_at: string;
+  /** Scénario annoncé, en texte libre. Souvent absent : facultatif. */
+  scenario: string | null;
 };
 
 export type Pairing = {
@@ -43,7 +45,7 @@ export function useRounds(tournamentId: string | undefined) {
 
     const { data: roundRows, error: roundError } = await supabase
       .from('rounds')
-      .select('id, number, status, created_at')
+      .select('id, number, status, created_at, scenario')
       .eq('tournament_id', tournamentId)
       .order('number');
 
@@ -97,6 +99,46 @@ export function useRounds(tournamentId: string | undefined) {
     return [...real, ...byes];
   }, [pairings]);
 
+  /**
+   * Enregistre le scénario d'une ronde. On met la liste à jour sur place
+   * plutôt que de recharger : `refresh()` rouvrirait la ronde par défaut et
+   * ferait clignoter le tableau des tables.
+   */
+  const setScenario = useCallback(async (roundId: string, scenario: string) => {
+    if (!supabase) return { ok: false, message: 'Hors ligne.' };
+    const clean = scenario.trim();
+    const { error: rpcError } = await supabase.rpc('set_round_scenario', {
+      p_round_id: roundId,
+      p_scenario: clean,
+    });
+    if (rpcError) return { ok: false, message: rpcError.message };
+    setRounds((current) =>
+      current.map((r) => (r.id === roundId ? { ...r, scenario: clean || null } : r))
+    );
+    return { ok: true, message: '' };
+  }, []);
+
+  /**
+   * Scénario d'une ronde désignée par son numéro : les modales de lancement
+   * et de clôture le saisissent avant que la ronde existe, donc avant d'avoir
+   * son identifiant. Un échec ici ne remet jamais la ronde en cause — elle est
+   * déjà créée, et le champ reste corrigeable sur la page.
+   */
+  const setScenarioForRound = useCallback(
+    async (roundNumber: number, scenario: string) => {
+      if (!supabase || !tournamentId || scenario.trim() === '') return { ok: true, message: '' };
+      const { data } = await supabase
+        .from('rounds')
+        .select('id')
+        .eq('tournament_id', tournamentId)
+        .eq('number', roundNumber)
+        .maybeSingle<{ id: string }>();
+      if (!data) return { ok: false, message: 'Ronde introuvable.' };
+      return setScenario(data.id, scenario);
+    },
+    [tournamentId, setScenario]
+  );
+
   const currentRound = rounds.find((r) => r.number === selectedNumber) ?? null;
   const scored = pairings.filter((p) => p.score_a !== null && p.score_b !== null).length;
 
@@ -110,5 +152,7 @@ export function useRounds(tournamentId: string | undefined) {
     loading,
     error,
     refresh,
+    setScenario,
+    setScenarioForRound,
   };
 }

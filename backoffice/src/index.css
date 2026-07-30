@@ -1243,6 +1243,56 @@ a {
 
 /* ---------- Résumé chiffré ---------- */
 
+/* Scénario de la ronde : une ligne discrète, jamais un obstacle à la saisie. */
+.scenario-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.scenario-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.scenario-input {
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--surface-active);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.scenario-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.scenario-hint,
+.scenario-readonly {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+@media print {
+  .scenario-input {
+    border: none;
+    background: none;
+    padding: 0;
+  }
+
+  .scenario-hint {
+    display: none;
+  }
+}
+
 .stats-row {
   display: flex;
   gap: var(--sp-3);

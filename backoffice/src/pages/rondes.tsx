@@ -89,6 +89,8 @@ export function RondesPage({
     loading,
     error,
     refresh,
+    setScenario,
+    setScenarioForRound,
   } = useRounds(tournament?.id);
   const { standings, refresh: refreshStandings } = useStandings(tournament?.id);
   const navigate = useNavigate();
@@ -125,6 +127,13 @@ export function RondesPage({
     if (tacticsKey) localStorage.setItem(tacticsKey, next ? '1' : '0');
   }
 
+  /**
+   * Le scénario reste corrigeable sur toutes les rondes tant que le tournoi
+   * n'est pas terminé : il est souvent annoncé après la génération.
+   */
+  const [scenarioDraft, setScenarioDraft] = useState('');
+  const [scenarioSaved, setScenarioSaved] = useState(false);
+
   const lastRoundNumber = rounds.length > 0 ? rounds[rounds.length - 1].number : null;
   const selectedRound = rounds.find((r) => r.number === selectedNumber) ?? null;
   // Une ronde close est figée, qu'une autre l'ait suivie ou non.
@@ -132,6 +141,30 @@ export function RondesPage({
     tournament?.status === 'in_progress' &&
     selectedNumber === lastRoundNumber &&
     selectedRound?.status !== 'completed';
+  const scenarioEditable = tournament?.status === 'in_progress' && selectedRound !== null;
+
+  /**
+   * On repart du scénario enregistré au changement de ronde — et à ce
+   * moment-là seulement. Réagir aussi au `scenario` effacerait le « Enregistré »
+   * dans la foulée de chaque sauvegarde, puisque c'est elle qui le fait changer.
+   */
+  useEffect(() => {
+    setScenarioDraft(selectedRound?.scenario ?? '');
+    setScenarioSaved(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRound?.id]);
+
+  async function commitScenario() {
+    if (!selectedRound) return;
+    if (scenarioDraft.trim() === (selectedRound.scenario ?? '')) return;
+    const result = await setScenario(selectedRound.id, scenarioDraft);
+    if (result.ok) {
+      setScenarioSaved(true);
+    } else {
+      setScenarioDraft(selectedRound.scenario ?? '');
+      setToast({ message: `Scénario non enregistré : ${result.message}`, variant: 'danger' });
+    }
+  }
 
   const {
     drafts,
@@ -455,12 +488,16 @@ export function RondesPage({
               .map((r) => r.profile?.pseudo ?? 'Joueur')}
             cancelLabel="Annuler"
             onCancel={() => setLaunchOpen(false)}
-            onLaunched={async () => {
+            onLaunched={async (scenario: string) => {
               setLaunchOpen(false);
               onChanged();
+              const applied = await setScenarioForRound(1, scenario);
               await Promise.all([refresh(), refreshRegistrations()]);
               setToast({
-                message: `Tournoi lancé. Ronde 1 générée sur ${Math.floor(presentCount / 2)} tables.`,
+                message: `Tournoi lancé. Ronde 1 générée sur ${Math.floor(presentCount / 2)} tables.${
+                  applied.ok ? '' : ' Le scénario n’a pas été enregistré : saisis-le sur la page.'
+                }`,
+                variant: applied.ok ? undefined : 'danger',
               });
             }}
           />
@@ -585,6 +622,45 @@ export function RondesPage({
             })}
           </div>
         </div>
+
+        {selectedRound ? (
+          <div className="scenario-row">
+            <label className="scenario-label" htmlFor="scenario">
+              Scénario
+            </label>
+            {scenarioEditable ? (
+              <>
+                <input
+                  id="scenario"
+                  className="scenario-input"
+                  type="text"
+                  maxLength={80}
+                  placeholder="Facultatif — ex. Focal Points"
+                  value={scenarioDraft}
+                  onChange={(event) => {
+                    setScenarioDraft(event.target.value);
+                    setScenarioSaved(false);
+                  }}
+                  onBlur={commitScenario}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') event.currentTarget.blur();
+                    if (event.key === 'Escape') {
+                      setScenarioDraft(selectedRound.scenario ?? '');
+                      event.currentTarget.blur();
+                    }
+                  }}
+                />
+                <span className="scenario-hint" aria-live="polite">
+                  {scenarioSaved ? 'Enregistré' : 'Visible par les joueurs dans l’app'}
+                </span>
+              </>
+            ) : (
+              <span className="scenario-readonly">
+                {selectedRound.scenario ?? 'Non renseigné'}
+              </span>
+            )}
+          </div>
+        ) : null}
 
         <div className="stats-row">
           <div className="stat-card">
@@ -1347,8 +1423,12 @@ export function RondesPage({
             toggleTacticsMode(true);
             setScoreFilter('no-tactics');
           }}
-          onClosed={async (result: CloseResult) => {
+          onClosed={async (result: CloseResult, scenario: string) => {
             setCloseOpen(false);
+            // Avant le refresh : la ronde existe déjà côté serveur.
+            const applied = result.next_round_number
+              ? await setScenarioForRound(result.next_round_number, scenario)
+              : { ok: true, message: '' };
             await refresh();
             onChanged();
             setSearch('');
@@ -1361,7 +1441,7 @@ export function RondesPage({
               setToast({
                 message: `Ronde ${selectedNumber} clôturée. Ronde ${result.next_round_number} générée sur ${result.tables_count} tables.${
                   result.bye_pseudo ? ` ${result.bye_pseudo} a le bye.` : ''
-                }`,
+                }${applied.ok ? '' : ' Le scénario n’a pas été enregistré : saisis-le sur la page.'}`,
                 action: { label: 'Afficher pour projection', onPress: () => setProjection(true) },
               });
             } else {
@@ -1422,6 +1502,7 @@ export function RondesPage({
               <div className="projection-title">{tournament.name}</div>
               <div className="projection-round">
                 Ronde {selectedNumber} sur {tournament.rounds_count}
+                {selectedRound?.scenario ? ` — ${selectedRound.scenario}` : ''}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
