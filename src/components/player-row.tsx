@@ -1,13 +1,16 @@
 import { StyleSheet, useColorScheme, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Spacing } from '@/constants/theme';
+import {
+  Colors,
+  GreenBackground,
+  GreenColor,
+  OnTint,
+  Spacing,
+  TintBackground,
+} from '@/constants/theme';
 import type { RegistrationRow } from '@/hooks/use-tournament-detail';
 import { ordinalFr } from '@/lib/ordinal';
-
-const GreenColor = { light: '#1E7C45', dark: '#63D489' };
-const GreenBackground = { light: 'rgba(30,124,69,0.10)', dark: 'rgba(99,212,137,0.14)' };
-const TintBackground = { light: 'rgba(156,122,31,0.10)', dark: 'rgba(212,175,55,0.14)' };
 
 type Props = {
   registration: RegistrationRow;
@@ -39,7 +42,7 @@ export function PlayerRow({ registration, isMe, waitlistPosition, showCheckedIn 
     badgeColor = colors.tint;
   } else if (isMe) {
     badgeBackground = colors.tint;
-    badgeColor = '#ffffff';
+    badgeColor = OnTint[mode];
   }
 
   return (
@@ -63,13 +66,22 @@ export function PlayerRow({ registration, isMe, waitlistPosition, showCheckedIn 
 
       {isMe ? (
         <View style={[styles.chip, { backgroundColor: colors.tint }]}>
-          <ThemedText style={[styles.chipText, { color: '#ffffff' }]}>toi</ThemedText>
+          <ThemedText style={[styles.chipText, { color: OnTint[mode] }]}>toi</ThemedText>
         </View>
       ) : null}
 
       {showCheckedIn && registration.status === 'checked_in' ? (
         <View style={[styles.chip, { backgroundColor: GreenBackground[mode] }]}>
           <ThemedText style={[styles.chipText, { color: GreenColor[mode] }]}>Présent</ThemedText>
+        </View>
+      ) : null}
+
+      {/* Abandon : puce neutre, jamais rouge — c'est une information, pas une faute. */}
+      {registration.status === 'dropped' ? (
+        <View style={[styles.chip, { backgroundColor: colors.backgroundSelected }]}>
+          <ThemedText style={[styles.chipText, { color: colors.textSecondary }]}>
+            Abandon{registration.dropped_round ? ` · R${registration.dropped_round}` : ''}
+          </ThemedText>
         </View>
       ) : null}
     </View>

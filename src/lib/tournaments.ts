@@ -20,7 +20,12 @@ export type Tournament = {
   updated_at: string;
 };
 
-export type RegistrationStatus = 'registered' | 'waitlisted' | 'withdrawn' | 'checked_in';
+export type RegistrationStatus =
+  | 'registered'
+  | 'waitlisted'
+  | 'withdrawn'
+  | 'checked_in'
+  | 'dropped';
 
 /** Une ligne de la table `registrations` dans Supabase. */
 export type Registration = {
@@ -28,12 +33,22 @@ export type Registration = {
   tournament_id: string;
   player_id: string;
   status: RegistrationStatus;
+  /** Ronde à laquelle le joueur a abandonné, si `status` vaut `dropped`. */
+  dropped_round: number | null;
   created_at: string;
   updated_at: string;
 };
 
-/** Statuts qui occupent réellement une place dans le tournoi. */
-export const ActiveRegistrationStatuses: RegistrationStatus[] = ['registered', 'checked_in'];
+/**
+ * Statuts qui occupent réellement une place dans le tournoi. Un joueur qui a
+ * abandonné garde la sienne : il reste inscrit et classé — sans lui, le
+ * compteur d'inscrits baisserait en plein tournoi.
+ */
+export const ActiveRegistrationStatuses: RegistrationStatus[] = [
+  'registered',
+  'checked_in',
+  'dropped',
+];
 
 /** Libellés français des statuts, affichés dans les badges. */
 export const StatusLabels: Record<TournamentStatus, string> = {

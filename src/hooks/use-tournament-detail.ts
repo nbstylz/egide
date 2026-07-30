@@ -15,6 +15,8 @@ export type RegistrationRow = {
   created_at: string;
   /** Date de promotion depuis la liste d'attente (null si inscription directe). */
   promoted_at: string | null;
+  /** Ronde à laquelle le joueur a abandonné (null sinon). */
+  dropped_round: number | null;
   profile: { pseudo: string; faction_favorite: string | null } | null;
 };
 
@@ -65,7 +67,7 @@ export function useTournamentDetail(tournamentId: string | undefined, userId: st
     const { data } = await supabase
       .from('tournaments')
       .select(
-        '*, organizer:profiles(pseudo), registrations(id, player_id, status, created_at, promoted_at, profile:profiles(pseudo, faction_favorite))'
+        '*, organizer:profiles(pseudo), registrations(id, player_id, status, created_at, promoted_at, dropped_round, profile:profiles(pseudo, faction_favorite))'
       )
       .eq('id', tournamentId)
       .maybeSingle<TournamentDetail>();

@@ -28,6 +28,21 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+/**
+ * Déclinaisons sémantiques partagées entre écrans (chaque entrée : clair/sombre).
+ * Règle de contraste : tout texte posé sur un fond `tint` utilise `OnTint` —
+ * blanc en clair, noir en sombre. Le blanc sur or sombre (#D4AF37) descend
+ * à ~1,9:1, illisible.
+ */
+export const GreenColor = { light: '#1E7C45', dark: '#63D489' } as const;
+export const GreenBackground = { light: 'rgba(30,124,69,0.10)', dark: 'rgba(99,212,137,0.14)' } as const;
+export const RedColor = { light: '#C13438', dark: '#FF6369' } as const;
+export const RedBackground = { light: 'rgba(209,67,67,0.10)', dark: 'rgba(255,99,105,0.14)' } as const;
+export const TintBackground = { light: 'rgba(156,122,31,0.10)', dark: 'rgba(212,175,55,0.14)' } as const;
+export const TintBorder = { light: 'rgba(156,122,31,0.35)', dark: 'rgba(212,175,55,0.35)' } as const;
+export const TintDivider = { light: 'rgba(156,122,31,0.20)', dark: 'rgba(212,175,55,0.20)' } as const;
+export const OnTint = { light: '#ffffff', dark: '#000000' } as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

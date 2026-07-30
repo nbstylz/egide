@@ -7,6 +7,7 @@ import {
   Alert,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   useColorScheme,
@@ -14,24 +15,31 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { JourJCard } from '@/components/jour-j-card';
 import { MetaRow } from '@/components/meta-row';
+import { MonParcours } from '@/components/mon-parcours';
 import { PlayerRow } from '@/components/player-row';
 import { StatusBadge } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  Colors,
+  GreenBackground,
+  GreenColor,
+  MaxContentWidth,
+  OnTint,
+  RedBackground,
+  RedColor,
+  Spacing,
+  TintBackground,
+} from '@/constants/theme';
+import { useMyPairing } from '@/hooks/use-my-pairing';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
 import { useTournamentDetail, visibleSlice } from '@/hooks/use-tournament-detail';
 import { ordinalFr } from '@/lib/ordinal';
 import { supabase } from '@/lib/supabase';
 import { formatEventDate, TypeLabels } from '@/lib/tournaments';
-
-const GreenColor = { light: '#1E7C45', dark: '#63D489' };
-const GreenBackground = { light: 'rgba(30,124,69,0.10)', dark: 'rgba(99,212,137,0.14)' };
-const RedColor = { light: '#C13438', dark: '#FF6369' };
-const RedBackground = { light: 'rgba(209,67,67,0.10)', dark: 'rgba(255,99,105,0.14)' };
-const TintBackground = { light: 'rgba(156,122,31,0.10)', dark: 'rgba(212,175,55,0.14)' };
 
 /** Nombre de lignes affichées directement sur la fiche avant « Voir tous ». */
 const InlineRegisteredLimit = 10;
@@ -57,6 +65,19 @@ export default function EvenementDetailScreen() {
     isOrganizer,
     isFull,
   } = useTournamentDetail(id, session?.user.id);
+
+  // Le déroulé du jour J : ronde en cours, mon appariement, mes résultats.
+  const {
+    currentRound,
+    pairings,
+    myPairing,
+    myResults,
+    standings,
+    loading: pairingLoading,
+    failed: pairingFailed,
+    refreshedAt,
+    refresh: refreshPairing,
+  } = useMyPairing(id, session?.user.id, tournament?.status);
 
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -256,7 +277,7 @@ export default function EvenementDetailScreen() {
     } else if (!session) {
       button = (
         <Pressable style={primaryStyle} onPress={() => router.push('/profil')}>
-          <ThemedText style={styles.buttonPrimaryText}>Se connecter pour s’inscrire</ThemedText>
+          <ThemedText style={[styles.buttonPrimaryText, { color: OnTint[mode] }]}>Se connecter pour s’inscrire</ThemedText>
         </Pressable>
       );
     } else if (!profile) {
@@ -267,7 +288,7 @@ export default function EvenementDetailScreen() {
       );
       button = (
         <Pressable style={primaryStyle} onPress={() => router.push('/profil')}>
-          <ThemedText style={styles.buttonPrimaryText}>Créer mon profil</ThemedText>
+          <ThemedText style={[styles.buttonPrimaryText, { color: OnTint[mode] }]}>Créer mon profil</ThemedText>
         </Pressable>
       );
     } else if (isCheckedIn) {
@@ -315,9 +336,9 @@ export default function EvenementDetailScreen() {
       button = (
         <Pressable style={primaryStyle} disabled={busy} onPress={handleRegister}>
           {busy ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={OnTint[mode]} />
           ) : (
-            <ThemedText style={styles.buttonPrimaryText}>Rejoindre la liste d’attente</ThemedText>
+            <ThemedText style={[styles.buttonPrimaryText, { color: OnTint[mode] }]}>Rejoindre la liste d’attente</ThemedText>
           )}
         </Pressable>
       );
@@ -325,9 +346,9 @@ export default function EvenementDetailScreen() {
       button = (
         <Pressable style={primaryStyle} disabled={busy} onPress={handleRegister}>
           {busy ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={OnTint[mode]} />
           ) : (
-            <ThemedText style={styles.buttonPrimaryText}>S’inscrire</ThemedText>
+            <ThemedText style={[styles.buttonPrimaryText, { color: OnTint[mode] }]}>S’inscrire</ThemedText>
           )}
         </Pressable>
       );
@@ -389,9 +410,26 @@ export default function EvenementDetailScreen() {
     const showPromotion = Boolean(myRegistration?.promoted_at) && !promotionSeen && isRegistered;
     const showCheckedIn = tournament.status !== 'open';
 
+    const isDropped = myRegistration?.status === 'dropped';
+    const showJourJ = tournament.status === 'in_progress' || tournament.status === 'completed';
+    const tablesCount = pairings.filter((p) => p.player_b_id !== null).length;
+
     body = (
       <>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={() => {
+                refresh();
+                refreshPairing();
+              }}
+              tintColor={colors.tint}
+              colors={[colors.tint]}
+            />
+          }>
           {/* Héros */}
           <View style={styles.hero}>
             <View style={styles.badgeRow}>
@@ -455,6 +493,32 @@ export default function EvenementDetailScreen() {
                 Cet événement a été annulé par l’organisateur.
               </ThemedText>
             </View>
+          ) : null}
+
+          {/* Le jour J : ma table, mon adversaire, mon parcours */}
+          {showJourJ ? (
+            <>
+              <JourJCard
+                tournament={tournament}
+                currentRound={currentRound}
+                myPairing={myPairing}
+                myRegistration={myRegistration}
+                userId={session?.user.id}
+                standings={standings}
+                tablesCount={tablesCount}
+                loading={pairingLoading}
+                failed={pairingFailed}
+                refreshedAt={refreshedAt}
+                onSeeTables={() =>
+                  router.push({ pathname: '/evenements/[id]/tables', params: { id } })
+                }
+              />
+              <MonParcours
+                results={myResults}
+                initiallyExpanded={tournament.status === 'completed' || isDropped}
+                droppedRound={isDropped ? (myRegistration?.dropped_round ?? null) : null}
+              />
+            </>
           ) : null}
 
           {/* Carte Format */}
@@ -772,7 +836,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   buttonPrimaryText: {
-    color: '#ffffff',
     fontWeight: '600',
   },
   banner: {

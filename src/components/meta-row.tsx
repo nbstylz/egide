@@ -10,9 +10,12 @@ import { Colors } from '@/constants/theme';
  */
 export function MetaRow({
   icon,
+  iconColor,
   children,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
+  /** Couleur de l'icône seule ; gris secondaire par défaut. */
+  iconColor?: string;
   children: ReactNode;
 }) {
   const scheme = useColorScheme();
@@ -20,7 +23,7 @@ export function MetaRow({
   return (
     <View style={styles.row}>
       <View style={styles.icon}>
-        <Ionicons name={icon} size={14} color={colors.textSecondary} />
+        <Ionicons name={icon} size={14} color={iconColor ?? colors.textSecondary} />
       </View>
       {children}
     </View>

@@ -175,7 +175,12 @@ EGIDE est l'application de référence de la scène compétitive francophone War
   4. Impossible de lancer avec moins de 2 joueurs checked-in.
 - **Taille : L** — **Dépendances :** US-3.1.
 
-### US-3.3 — Mon match de la ronde en cours (app mobile)
+### US-3.3 — Mon match de la ronde en cours (app mobile) — ✅ Livrée (2026-07-30)
+> Bloc `jour-j-card.tsx` + hook `use-my-pairing.ts`. Le numéro de table est en 64 px noir/blanc sur cadre doré — le doré fait le cadre, le chiffre fait le contraste. Un seul bloc doré par écran : dès que le score est saisi (ou bye, abandon, spectateur), le fond redevient neutre.
+> Correction du statut `dropped` faite : un joueur qui abandonne reste dans la liste des inscrits avec une puce neutre « Abandon · RN » et ne décrémente plus le compteur.
+> « Tirer pour rafraîchir » ajouté à la fiche, avec indicateur « Actualisé il y a X min ».
+> Contraste corrigé au passage : tout texte sur fond doré passe par `OnTint` (blanc en clair, noir en sombre) — l'ancien blanc fixe tombait à ~1,9:1 en mode sombre.
+> Testé navigateur : apparié, score saisi, abandon, terminé (1er et abandonné), spectateur déconnecté. L'état bye est couvert par le même code que l'appariement (revue seule : il faudrait un effectif impair).
 **En tant que** joueur inscrit, **je veux** voir sur la fiche du tournoi à quelle table je joue et contre qui **afin de** m'installer sans attendre l'annonce micro ni faire la queue devant l'écran de projection.
 - Critères :
   1. Un bloc « Le jour J » apparaît sur la fiche événement (`src/app/evenements/[id].tsx`), **au-dessus** des cartes Format et Participants, dès que le tournoi n'est plus en statut « inscriptions ouvertes ». Lecture seule : aucune écriture en base depuis l'app mobile.
@@ -295,7 +300,8 @@ Les US ci-dessous complètent l'EPIC-3 : le déroulé existe côté organisateur
 
 L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leur table et le classement en direct sur leur téléphone ». Tant que ce lot n'est pas livré, le pilier 1 du cahier des charges (classement en temps réel *dans l'app*) ne l'est pas non plus.
 
-### US-3.10 — Toutes les tables de la ronde
+### US-3.10 — Toutes les tables de la ronde — ✅ Livrée (2026-07-30)
+> Écran `src/app/evenements/[id]/tables.tsx`, accessible sans connexion. Sélecteur de rondes générées, scénario affiché, ma ligne dorée avec puce « toi », bye en fin de liste, recherche dès 8 tables avec encart-réponse (« X joue à la table N, contre Y »), ouverture positionnée sur ma table.
 **En tant que** joueur, **je veux** consulter l'ensemble des appariements de la ronde **afin de** savoir où jouent mes amis et suivre les tables du haut de tableau.
 - Critères :
   1. Depuis le bloc « Le jour J », un lien « Voir les N tables » ouvre un écran dédié, accessible **sans être inscrit et sans être connecté** (la RLS de `pairings` autorise déjà la lecture publique).
@@ -307,7 +313,8 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
   7. Recherche par pseudo qui répond « Julien joue à la table 7, contre Sarah » — même comportement que la page Rondes du back office.
 - **Taille : S** — **Dépendances :** US-3.3.
 
-### US-3.11 — Mon parcours dans le tournoi
+### US-3.11 — Mon parcours dans le tournoi — ✅ Livrée (2026-07-30)
+> `mon-parcours.tsx`, alimenté par la vue `player_results`. Replié par défaut le jour J (l'en-tête porte le bilan « 2 V · 1 N · 2 D »), déplié d'office quand le tournoi est terminé ou que le joueur a abandonné. Barre d'issue verte/grise/rouge par ligne, bye en italique, total en pied.
 **En tant que** joueur, **je veux** revoir mes rondes précédentes avec mes adversaires et mes scores **afin de** vérifier ma journée sans reprendre l'écran de projection.
 - Critères :
   1. Dans le bloc « Le jour J », une section « Mon parcours » : une ligne par ronde jouée — numéro, adversaire, mon score – son score, issue (Victoire / Défaite / Égalité).
@@ -319,6 +326,7 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
 - **Taille : S** — **Dépendances :** US-3.3.
 
 ### US-3.12 — Classement du tournoi sur mobile
+> Note (2026-07-30) : le bloc « Le jour J » (US-3.3) prévoit un bouton « Classement » dans son pied et, tournoi terminé, un bouton primaire « Voir le classement final ». Ils sont **absents tant que cette US n'est pas livrée** — un bouton vers un écran inexistant serait pire que pas de bouton. À rebrancher ici.
 **En tant que** joueur, **je veux** consulter le classement mis à jour après chaque ronde **afin de** savoir où j'en suis et contre qui je risque de tomber.
 - Critères :
   1. Écran « Classement » accessible depuis la fiche événement dès qu'un score est saisi, alimenté par `tournament_standings(tournament_id)` (migration 0010) — aucun calcul refait côté app.
