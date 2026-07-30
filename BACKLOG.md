@@ -404,7 +404,9 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
 **Objectif :** conformité phase 1 du cahier des charges — soumission texte/PDF, validation manuelle par l'organisateur. L'architecture doit permettre la vérification poussée en phase 2.
 **Valeur utilisateur :** l'organisateur collecte toutes les listes au même endroit au lieu de courir après les e-mails.
 
-### US-5.1 — Soumettre sa liste en texte
+### US-5.1 — Soumettre sa liste en texte — ✅ Livrée (2026-07-30)
+> Migrations 0018 (`army_lists`, `submit_army_list`, `review_army_list`) et 0019 (`reopen_army_list`). Une liste peut révéler une stratégie : seuls le joueur et l'organisateur la lisent (RLS vérifiée par test). Refusée → resoumissible ; validée → figée ; soumission close dès le lancement du tournoi (règle v1 la plus simple, une deadline paramétrable pourra remplacer cette condition plus tard).
+> Mobile : carte « Ma liste d'armée » sur la fiche (4 états, statut porté par badge + texte, jamais la couleur seule) + écran `evenements/[id]/liste.tsx` (faction préremplie du profil, champ mono sans autocorrection, texte jamais perdu en cas d'erreur réseau, garde-fou de sortie).
 **En tant que** joueur inscrit, **je veux** coller ma liste d'armée sur ma fiche d'inscription **afin de** la transmettre à l'organisateur.
 - Critères :
   1. Migration : table `army_lists` (inscription, contenu texte, faction, statut : soumise / validée / refusée, commentaire organisateur) avec RLS.
@@ -420,7 +422,9 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
   3. Remplacement possible tant que la liste n'est pas validée.
 - **Taille : M** — **Dépendances :** US-5.1.
 
-### US-5.3 — Validation manuelle par l'organisateur
+### US-5.3 — Validation manuelle par l'organisateur — ✅ Livrée (2026-07-30)
+> Page `backoffice/src/pages/listes.tsx` : tableau de synthèse (les inscriptions sans liste restent visibles, atténuées — l'absence est une information de pilotage) + panneau latéral de relecture qui parcourt la file, le motif de refus se rédige la liste sous les yeux. Refus impossible sans motif (bouton désactivé + fonction SQL). Validation annulable (toast « Annuler » et « Repasser en relecture », migration 0019). Relance sans push : « Copier les pseudos sans liste ».
+> Testé de bout en bout entre les deux apps : soumission mobile → refus avec motif → l'encart rouge apparaît côté joueur → correction resoumise → revient « À relire » → validation → figée côté mobile avec bandeau vert.
 **En tant qu'** organisateur, **je veux** valider ou refuser chaque liste avec un commentaire **afin de** garantir des listes conformes le jour J.
 - Critères :
   1. Vue « Listes » sur la fiche de gestion : par joueur, statut et contenu/PDF consultables.

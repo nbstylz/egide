@@ -9,6 +9,7 @@ import { CheckInPage } from './pages/check-in';
 import { ClassementPage } from './pages/classement';
 import { InscritsPage } from './pages/inscrits';
 import { RondesPage } from './pages/rondes';
+import { ListesPage } from './pages/listes';
 import { PlaceholderPage } from './pages/placeholder';
 import { TournoiDetailPage } from './pages/tournoi-detail';
 import { TournoisPage } from './pages/tournois';
@@ -69,6 +70,13 @@ function TournoiRoute({
           tournamentError={error}
           userId={userId}
           onChanged={refresh}
+        />
+      ) : section === 'listes' ? (
+        <ListesPage
+          tournament={tournament}
+          tournamentLoading={loading}
+          tournamentError={error}
+          userId={userId}
         />
       ) : section ? (
         <PlaceholderPage section={section} />

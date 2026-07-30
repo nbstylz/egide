@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ArmyListCard } from '@/components/army-list-card';
 import { JourJCard } from '@/components/jour-j-card';
 import { MetaRow } from '@/components/meta-row';
 import { MonParcours } from '@/components/mon-parcours';
@@ -33,6 +34,7 @@ import {
   Spacing,
   TintBackground,
 } from '@/constants/theme';
+import { useArmyList } from '@/hooks/use-army-list';
 import { useMyPairing } from '@/hooks/use-my-pairing';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
@@ -78,6 +80,16 @@ export default function EvenementDetailScreen() {
     refreshedAt,
     refresh: refreshPairing,
   } = useMyPairing(id, session?.user.id, tournament?.status);
+
+  // Ma liste d'armée, chargée seulement si j'ai une inscription.
+  const { list: armyList, refresh: refreshArmyList } = useArmyList(myRegistration?.id);
+
+  // Au retour de l'écran de saisie, le statut de la liste a pu changer.
+  useFocusEffect(
+    useCallback(() => {
+      refreshArmyList();
+    }, [refreshArmyList])
+  );
 
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -425,6 +437,7 @@ export default function EvenementDetailScreen() {
               onRefresh={() => {
                 refresh();
                 refreshPairing();
+                refreshArmyList();
               }}
               tintColor={colors.tint}
               colors={[colors.tint]}
@@ -495,6 +508,18 @@ export default function EvenementDetailScreen() {
             </View>
           ) : null}
 
+          {/* Ma liste d'armée : tant que les inscriptions sont ouvertes,
+              c'est la seule chose que le joueur inscrit a à faire ici. */}
+          {isRegistered && tournament.status === 'open' ? (
+            <ArmyListCard
+              list={armyList}
+              submissionsOpen
+              onOpen={() =>
+                router.push({ pathname: '/evenements/[id]/liste', params: { id } })
+              }
+            />
+          ) : null}
+
           {/* Le jour J : ma table, mon adversaire, mon parcours */}
           {showJourJ ? (
             <>
@@ -521,6 +546,16 @@ export default function EvenementDetailScreen() {
                 initiallyExpanded={tournament.status === 'completed' || isDropped}
                 droppedRound={isDropped ? (myRegistration?.dropped_round ?? null) : null}
               />
+              {/* Le tournoi est lancé : la liste n'est plus qu'une consultation. */}
+              {isRegistered ? (
+                <ArmyListCard
+                  list={armyList}
+                  submissionsOpen={false}
+                  onOpen={() =>
+                    router.push({ pathname: '/evenements/[id]/liste', params: { id } })
+                  }
+                />
+              ) : null}
             </>
           ) : null}
 

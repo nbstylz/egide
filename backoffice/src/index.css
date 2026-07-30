@@ -1665,6 +1665,192 @@ a {
   margin: 0;
 }
 
+/* ---- Page Listes d'armées ---- */
+
+.badge-list-none {
+  color: var(--text-secondary);
+  border: 1px solid var(--surface-active);
+  background: transparent;
+}
+
+.badge-list-submitted {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.badge-list-validated {
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.badge-list-rejected {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.checkin-count-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.listes-status-line {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: var(--sp-1);
+}
+
+.listes-all-done {
+  color: var(--success);
+}
+
+.row-muted {
+  opacity: 0.55;
+}
+
+/* Ligne validée : un liseré vert, l'œil ne voit plus que le reste à traiter. */
+.listes-row-approved td:first-child {
+  box-shadow: inset 3px 0 0 var(--success);
+}
+
+.listes-approved-line {
+  font-size: 15px;
+  color: var(--success);
+}
+
+/* Panneau de relecture : la liste reste visible pendant qu'on rédige. */
+.drawer-veil {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 520px;
+  max-width: 100vw;
+  background: var(--bg);
+  border-left: 1px solid var(--surface-active);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-bottom: 1px solid var(--surface-active);
+}
+
+.drawer-head-texts {
+  min-width: 0;
+}
+
+.drawer-title {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.drawer-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: var(--sp-1);
+}
+
+.drawer-head-actions {
+  display: flex;
+  gap: var(--sp-1);
+  flex-shrink: 0;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-4);
+}
+
+.drawer-list {
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: var(--sp-3);
+  margin: 0;
+  user-select: text;
+}
+
+.drawer-foot {
+  border-top: 1px solid var(--surface-active);
+  padding: var(--sp-3) var(--sp-4);
+}
+
+.drawer-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.drawer-actions .btn {
+  min-height: 48px;
+}
+
+.drawer-reject {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.drawer-reject-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.drawer-reject-input {
+  height: auto;
+  padding: var(--sp-2) var(--sp-3);
+  resize: vertical;
+  font-family: inherit;
+}
+
+.drawer-decided {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: flex-start;
+}
+
+.drawer-rejected-box {
+  background: var(--danger-bg);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 14px;
+  align-self: stretch;
+}
+
+.drawer-rejected-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 900px) {
+  .drawer {
+    width: 100vw;
+  }
+}
+
 .skeleton {
   background: var(--surface);
   border-radius: var(--radius);
