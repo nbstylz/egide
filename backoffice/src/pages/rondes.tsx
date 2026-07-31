@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { flushPushQueue } from '../lib/push';
 import { supabase } from '../lib/supabase';
 
 import { CloseRoundModal, type CloseResult } from '../components/close-round-modal';
@@ -517,6 +518,8 @@ export function RondesPage({
               setLaunchOpen(false);
               onChanged();
               const applied = await setScenarioForRound(1, scenario);
+              // La ronde 1 vient d'être générée : préviens les joueurs.
+              flushPushQueue();
               await Promise.all([refresh(), refreshRegistrations()]);
               setToast({
                 message: `Tournoi lancé. Ronde 1 générée sur ${Math.floor(presentCount / 2)} tables.${
@@ -1454,6 +1457,8 @@ export function RondesPage({
             const applied = result.next_round_number
               ? await setScenarioForRound(result.next_round_number, scenario)
               : { ok: true, message: '' };
+            // Une ronde a peut-être été générée : préviens les joueurs.
+            if (result.next_round_number) flushPushQueue();
             await refresh();
             onChanged();
             setSearch('');

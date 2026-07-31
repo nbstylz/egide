@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, useColorScheme } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Switch, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthForm } from '@/components/auth-form';
@@ -21,6 +21,22 @@ export default function ProfilScreen() {
   const [editing, setEditing] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMessage, setPushMessage] = useState<string | null>(null);
+
+  /**
+   * Bascule une préférence de notification. Optimiste : l'interrupteur
+   * répond au doigt, et revient en arrière si l'écriture échoue.
+   */
+  async function togglePreference(
+    field: 'notify_region' | 'notify_registrations',
+    value: boolean
+  ) {
+    if (!supabase || !session || !profile) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ [field]: value, updated_at: new Date().toISOString() })
+      .eq('id', session.user.id);
+    if (!error) await refresh();
+  }
 
   /** Enregistre l'appareil puis demande une notification de test. */
   async function handlePushTest() {
@@ -115,6 +131,29 @@ export default function ProfilScreen() {
           onPress={() => setEditing(true)}>
           <ThemedText style={styles.buttonPrimaryText}>Modifier mon profil</ThemedText>
         </Pressable>
+        <ThemedView style={[styles.prefCard, { backgroundColor: colors.backgroundElement }]}>
+          <ThemedText type="smallBold">Notifications</ThemedText>
+          <ThemedView style={styles.prefRow}>
+            <ThemedText type="small" style={styles.prefLabel}>
+              Tournois dans ma région
+            </ThemedText>
+            <Switch
+              value={profile.notify_region}
+              onValueChange={(value) => togglePreference('notify_region', value)}
+              trackColor={{ true: colors.tint }}
+            />
+          </ThemedView>
+          <ThemedView style={styles.prefRow}>
+            <ThemedText type="small" style={styles.prefLabel}>
+              Inscriptions sur mes tournois
+            </ThemedText>
+            <Switch
+              value={profile.notify_registrations}
+              onValueChange={(value) => togglePreference('notify_registrations', value)}
+              trackColor={{ true: colors.tint }}
+            />
+          </ThemedView>
+        </ThemedView>
         <Pressable
           style={({ pressed }) => [
             styles.button,
@@ -161,6 +200,24 @@ export default function ProfilScreen() {
 }
 
 const styles = StyleSheet.create({
+  prefCard: {
+    alignSelf: 'stretch',
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.two,
+    backgroundColor: 'transparent',
+  },
+  prefRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    backgroundColor: 'transparent',
+    minHeight: 36,
+  },
+  prefLabel: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     justifyContent: 'center',

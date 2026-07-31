@@ -7,6 +7,7 @@ import { Toast } from '../components/toast';
 import type { TournamentWithCount } from '../hooks/use-my-tournaments';
 import { useRegistrations, type Registration } from '../hooks/use-registrations';
 import { ordinalFr } from '../lib/ordinal';
+import { flushPushQueue } from '../lib/push';
 import { supabase } from '../lib/supabase';
 import {
   CheckInEditableStatuses,
@@ -535,9 +536,27 @@ export function CheckInPage({
             .map((r) => r.profile?.pseudo ?? 'Joueur')}
           cancelLabel="Revenir au pointage"
           onCancel={() => setLaunchOpen(false)}
-          onLaunched={() => {
+          onLaunched={async (scenario: string) => {
             setLaunchOpen(false);
             onChanged();
+            // Le scénario saisi dans la modale doit survivre au trajet vers
+            // la page Rondes : on l'écrit ici, sur la ronde 1 fraîche.
+            if (supabase && scenario.trim() !== '') {
+              const { data: round } = await supabase
+                .from('rounds')
+                .select('id')
+                .eq('tournament_id', tournament.id)
+                .eq('number', 1)
+                .maybeSingle<{ id: string }>();
+              if (round) {
+                await supabase.rpc('set_round_scenario', {
+                  p_round_id: round.id,
+                  p_scenario: scenario.trim(),
+                });
+              }
+            }
+            // La ronde 1 vient d'être générée : préviens les joueurs.
+            flushPushQueue();
             // On envoie l'organisateur voir les appariements, pas la liste figée.
             navigate(`/tournois/${tournament.id}/rondes`);
           }}

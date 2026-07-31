@@ -1,6 +1,8 @@
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { DarkTheme, DefaultTheme, ThemeProvider, Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { useEffect } from 'react';
+import { Platform, useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { configureNotificationHandler } from '@/lib/push';
@@ -14,6 +16,19 @@ configureNotificationHandler();
  */
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  // Un tap sur une notification ouvre l'écran qu'elle annonce : chaque
+  // message embarque son `url` (ex. la page des tables de la ronde).
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const url = response.notification.request.content.data?.url;
+      if (typeof url === 'string' && url.startsWith('/')) {
+        router.push(url as never);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

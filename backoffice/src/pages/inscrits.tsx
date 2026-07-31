@@ -7,6 +7,7 @@ import { Toast } from '../components/toast';
 import type { TournamentWithCount } from '../hooks/use-my-tournaments';
 import { useRegistrations, type Registration } from '../hooks/use-registrations';
 import { ordinalFr } from '../lib/ordinal';
+import { flushPushQueue } from '../lib/push';
 import { supabase } from '../lib/supabase';
 import { formatDateNumeric, formatEventDateShort, RemovableStatuses } from '../lib/tournaments';
 
@@ -157,6 +158,8 @@ export function InscritsPage({
       return;
     }
 
+    // Le retrait a peut-être promu quelqu'un depuis la liste d'attente.
+    flushPushQueue();
     setToRemove(null);
     await refresh();
     onChanged();

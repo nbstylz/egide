@@ -8,6 +8,10 @@ export type Profile = {
   pseudo: string;
   region: string | null;
   faction_favorite: string | null;
+  /** Alerte « tournoi dans ma région » (US-6.4). */
+  notify_region: boolean;
+  /** Notification à chaque inscription sur mes tournois (US-6.3). */
+  notify_registrations: boolean;
   created_at: string;
   updated_at: string;
 };

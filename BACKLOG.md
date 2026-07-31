@@ -454,7 +454,9 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
 - **Point technique :** nécessite un development build (les push ne fonctionnent pas dans Expo Go ni dans le navigateur) — à anticiper.
 - **Taille : L** — **Dépendances :** aucune fonctionnelle, mais à livrer après EPIC-3 pour avoir des événements à notifier.
 
-### US-6.2 — Notification de début de ronde
+### US-6.2 — Notification de début de ronde — 🔶 Codée (2026-07-30), réception téléphone en attente
+> Migration 0022 : table `push_outbox` + triggers. Chaque événement à notifier est posé en file par la base au moment où il naît ; la fonction `send-push` (mode `flush`) la vide et **compose les messages côté serveur** — le contenu ne vient jamais de l'appelant, donc n'importe quel utilisateur connecté peut demander le vidage sans risque. Message : « Ronde X : table Y, contre Z » (ou « tu as le bye »), un tap ouvre l'écran des tables (`data.url` + listener dans `_layout.tsx`). Les joueurs droppés ne sont pas appariés, donc pas notifiés.
+> Chaîne vérifiée de bout en bout dans le navigateur : action → événement en file → flush → `processed: 1`. Seule la réception finale attend le development build.
 **En tant que** joueur checked-in, **je veux** être notifié quand les appariements sont publiés **afin de** rejoindre ma table sans délai.
 - Critères :
   1. À la génération d'une ronde, chaque joueur apparié reçoit une push « Ronde X : table Y contre Z ».
@@ -462,7 +464,8 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
   3. Les joueurs droppés ne reçoivent rien.
 - **Taille : M** — **Dépendances :** US-6.1, US-3.6.
 
-### US-6.3 — Notifications d'inscription
+### US-6.3 — Notifications d'inscription — 🔶 Codée (2026-07-30), réception téléphone en attente
+> Mêmes triggers (0022) : promotion liste d'attente → « Ta place est confirmée ! » ; liste validée/refusée → renvoi vers l'écran de liste ; nouvelle inscription → notification à l'organisateur, désactivable par l'interrupteur « Inscriptions sur mes tournois » du Profil (colonne `notify_registrations`).
 **En tant que** joueur, **je veux** être notifié quand ma place est confirmée depuis la liste d'attente ou quand ma liste est validée/refusée **afin de** réagir vite.
 - Critères :
   1. Push à la promotion liste d'attente → inscrit.
@@ -470,7 +473,8 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
   3. L'organisateur est notifié d'une nouvelle inscription (activable/désactivable).
 - **Taille : M** — **Dépendances :** US-6.1, US-2.4, US-5.3.
 
-### US-6.4 — Alerte « tournoi près de chez moi »
+### US-6.4 — Alerte « tournoi près de chez moi » — 🔶 Codée (2026-07-30), réception téléphone en attente
+> Trigger à la publication (`open` à la création ou depuis un brouillon) : push aux profils de la même région, hors organisateur, préférence « Tournois dans ma région » désactivable au Profil (`notify_region`). Pas de doublon : l'événement n'est créé qu'une fois par tournoi, une modification ne le refait pas.
 **En tant que** joueur, **je veux** être alerté quand un tournoi ouvre dans ma région **afin de** ne rater aucun événement local.
 - Critères :
   1. À la publication d'un tournoi, push aux joueurs dont la région du profil correspond.

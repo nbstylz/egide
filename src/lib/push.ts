@@ -56,6 +56,17 @@ export async function registerForPush(
   }
 }
 
+/**
+ * Demande le vidage de la file de notifications, sans attendre la réponse.
+ * À appeler après toute action qui crée un événement à notifier (inscription,
+ * désinscription…) : l'appareil de l'acteur déclenche la livraison immédiate.
+ */
+export function flushPushQueue() {
+  supabase?.functions.invoke('send-push', { body: { flush: true } }).catch(() => {
+    // Un échec ici n'est jamais bloquant : la file sera vidée au prochain appel.
+  });
+}
+
 /** Comment une notification s'affiche quand l'app est ouverte. */
 export function configureNotificationHandler() {
   Notifications.setNotificationHandler({

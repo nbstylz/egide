@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Toast } from '../components/toast';
 import type { TournamentWithCount } from '../hooks/use-my-tournaments';
 import { useArmyLists, type ListEntry } from '../hooks/use-army-lists';
+import { flushPushQueue } from '../lib/push';
 import { supabase } from '../lib/supabase';
 import { formatEventDateShort } from '../lib/tournaments';
 
@@ -154,6 +155,8 @@ export function ListesPage({ tournament, tournamentLoading, tournamentError }: P
       });
       return;
     }
+    // Le joueur est notifié du verdict.
+    flushPushQueue();
     const listId = entry.list.id;
     setToast({
       message: `Liste de ${entry.pseudo} validée.`,
@@ -184,6 +187,8 @@ export function ListesPage({ tournament, tournamentLoading, tournamentError }: P
       });
       return;
     }
+    // Le joueur est notifié du verdict, motif à l'appui dans l'app.
+    flushPushQueue();
     setToast({
       message: `Liste de ${entry.pseudo} refusée. Le motif est visible dans l’application.`,
     });

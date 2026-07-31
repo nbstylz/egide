@@ -40,7 +40,7 @@ import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
 import { useTournamentDetail, visibleSlice } from '@/hooks/use-tournament-detail';
 import { ordinalFr } from '@/lib/ordinal';
-import { registerForPush } from '@/lib/push';
+import { flushPushQueue, registerForPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 import { formatEventDate, TypeLabels } from '@/lib/tournaments';
 
@@ -175,6 +175,8 @@ export default function EvenementDetailScreen() {
       // s'engager, il a une raison d'être prévenu. Jamais au premier
       // lancement. Sans suite bloquante — un refus se gère en silence.
       registerForPush(session.user.id);
+      // Son inscription vient peut-être de notifier l'organisateur.
+      flushPushQueue();
     }
     await refresh();
     setBusy(false);
@@ -195,6 +197,9 @@ export default function EvenementDetailScreen() {
           ? 'Impossible de quitter la liste d’attente. Vérifie ta connexion et réessaie.'
           : 'Impossible de te désinscrire. Vérifie ta connexion et réessaie.'
       );
+    } else {
+      // Le désistement a peut-être promu quelqu'un : qu'il le sache vite.
+      flushPushQueue();
     }
     await refresh();
     setBusy(false);
