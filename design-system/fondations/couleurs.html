@@ -1,0 +1,45 @@
+<!-- @dsCard group="Fondations" -->
+<!--
+  Palette EGIDE — source de vérité : src/constants/theme.ts
+  Règle de contraste : tout texte posé sur un fond `tint` utilise OnTint
+  (blanc en clair, NOIR en sombre — blanc sur or sombre ≈ 1,9:1, illisible).
+-->
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .mode { flex: 1; min-width: 300px; border-radius: 12px; padding: 20px; }
+  .mode.light { background: #ffffff; color: #000; border: 1px solid #E0E1E6; }
+  .mode.dark { background: #000000; color: #fff; }
+  h2 { font-size: 14px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: .6px; opacity: .6; }
+  .row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .swatch { width: 44px; height: 32px; border-radius: 6px; flex-shrink: 0; border: 1px solid rgba(128,128,128,.25); }
+  .name { font-size: 13px; font-weight: 600; flex: 1; }
+  .hex { font-family: ui-monospace, monospace; font-size: 12px; opacity: .65; }
+</style>
+<div class="mode light">
+  <h2>Mode clair</h2>
+  <div class="row"><div class="swatch" style="background:#9C7A1F"></div><div class="name">tint (or)</div><div class="hex">#9C7A1F</div></div>
+  <div class="row"><div class="swatch" style="background:#000000"></div><div class="name">text</div><div class="hex">#000000</div></div>
+  <div class="row"><div class="swatch" style="background:#60646C"></div><div class="name">textSecondary</div><div class="hex">#60646C</div></div>
+  <div class="row"><div class="swatch" style="background:#ffffff"></div><div class="name">background</div><div class="hex">#FFFFFF</div></div>
+  <div class="row"><div class="swatch" style="background:#F0F0F3"></div><div class="name">backgroundElement</div><div class="hex">#F0F0F3</div></div>
+  <div class="row"><div class="swatch" style="background:#E0E1E6"></div><div class="name">backgroundSelected</div><div class="hex">#E0E1E6</div></div>
+  <div class="row"><div class="swatch" style="background:#1E7C45"></div><div class="name">GreenColor (victoire, validé)</div><div class="hex">#1E7C45</div></div>
+  <div class="row"><div class="swatch" style="background:#C13438"></div><div class="name">RedColor (erreur, refus)</div><div class="hex">#C13438</div></div>
+  <div class="row"><div class="swatch" style="background:rgba(156,122,31,.10)"></div><div class="name">TintBackground</div><div class="hex">or à 10 %</div></div>
+  <div class="row"><div class="swatch" style="background:#fff;border-color:rgba(156,122,31,.35)"></div><div class="name">TintBorder</div><div class="hex">or à 35 %</div></div>
+  <div class="row"><div class="swatch" style="background:#ffffff"></div><div class="name">OnTint (texte sur fond or)</div><div class="hex">#FFFFFF</div></div>
+</div>
+<div class="mode dark">
+  <h2>Mode sombre</h2>
+  <div class="row"><div class="swatch" style="background:#D4AF37"></div><div class="name">tint (or)</div><div class="hex">#D4AF37</div></div>
+  <div class="row"><div class="swatch" style="background:#ffffff"></div><div class="name">text</div><div class="hex">#FFFFFF</div></div>
+  <div class="row"><div class="swatch" style="background:#B0B4BA"></div><div class="name">textSecondary</div><div class="hex">#B0B4BA</div></div>
+  <div class="row"><div class="swatch" style="background:#000000"></div><div class="name">background</div><div class="hex">#000000</div></div>
+  <div class="row"><div class="swatch" style="background:#212225"></div><div class="name">backgroundElement</div><div class="hex">#212225</div></div>
+  <div class="row"><div class="swatch" style="background:#2E3135"></div><div class="name">backgroundSelected</div><div class="hex">#2E3135</div></div>
+  <div class="row"><div class="swatch" style="background:#63D489"></div><div class="name">GreenColor (victoire, validé)</div><div class="hex">#63D489</div></div>
+  <div class="row"><div class="swatch" style="background:#FF6369"></div><div class="name">RedColor (erreur, refus)</div><div class="hex">#FF6369</div></div>
+  <div class="row"><div class="swatch" style="background:rgba(212,175,55,.14)"></div><div class="name">TintBackground</div><div class="hex">or à 14 %</div></div>
+  <div class="row"><div class="swatch" style="background:#000;border-color:rgba(212,175,55,.35)"></div><div class="name">TintBorder</div><div class="hex">or à 35 %</div></div>
+  <div class="row"><div class="swatch" style="background:#000000"></div><div class="name">OnTint (texte sur fond or)</div><div class="hex">#000000</div></div>
+</div>

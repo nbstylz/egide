@@ -1,0 +1,34 @@
+<!-- @dsCard group="Composants" -->
+<!--
+  Boutons. Le primaire est plein or, texte OnTint (blanc en clair, NOIR en
+  sombre). Les actions destructrices n'ouvrent jamais de modale : double
+  pression, la conséquence s'affiche entre les deux, désarmement après 5 s.
+-->
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .mode { flex: 1; min-width: 300px; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .mode.light { background: #ffffff; color: #000; border: 1px solid #E0E1E6; }
+  .mode.dark { background: #000000; color: #fff; }
+  .btn { min-height: 52px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+  .link { min-height: 44px; display: flex; align-items: center; font-size: 14px; font-weight: 700; }
+  .hint { font-size: 12px; opacity: .6; margin: -4px 0 4px; }
+</style>
+<div class="mode light">
+  <div class="btn" style="background:#9C7A1F;color:#fff">Soumettre ma liste</div>
+  <div class="hint">Primaire — fond tint, texte OnTint</div>
+  <div class="btn" style="background:#F0F0F3;color:#000;font-weight:500">Voir ou modifier ma liste</div>
+  <div class="hint">Secondaire — backgroundElement</div>
+  <div class="btn" style="background:#F0F0F3;color:#C13438;font-weight:500">Quitter l’équipe</div>
+  <div class="btn" style="background:rgba(209,67,67,.10);color:#C13438">Confirmer le départ</div>
+  <div class="hint">Destructif — 1ʳᵉ pression puis état armé (5 s)</div>
+  <div class="link" style="color:#9C7A1F">Voir ma liste</div>
+  <div class="hint">Lien — quand il n'y a plus rien à faire</div>
+</div>
+<div class="mode dark">
+  <div class="btn" style="background:#D4AF37;color:#000">Soumettre ma liste</div>
+  <div class="hint">Primaire — texte NOIR sur or sombre</div>
+  <div class="btn" style="background:#212225;color:#fff;font-weight:500">Voir ou modifier ma liste</div>
+  <div class="btn" style="background:#212225;color:#FF6369;font-weight:500">Quitter l’équipe</div>
+  <div class="btn" style="background:rgba(255,99,105,.14);color:#FF6369">Confirmer le départ</div>
+  <div class="link" style="color:#D4AF37">Voir ma liste</div>
+</div>

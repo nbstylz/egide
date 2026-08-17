@@ -1,0 +1,53 @@
+<!-- @dsCard group="Composants" -->
+<!--
+  Carte de tournoi (annuaire). La ligne des places est la seule qui change
+  de registre : neutre, « Plus que N » en vert (urgence positive),
+  « Complet » en rouge, « Terminé / En cours » en gris une fois lancé.
+-->
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .col { width: 340px; display: flex; flex-direction: column; gap: 8px; border-radius: 12px; padding: 20px; }
+  .col.light { background: #ffffff; border: 1px solid #E0E1E6; }
+  .col.dark { background: #000000; }
+  .card { border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+  .title { font-size: 16px; line-height: 24px; font-weight: 500; }
+  .meta { font-size: 14px; line-height: 20px; }
+  .places { font-size: 14px; font-weight: 700; margin-top: 4px; }
+  .full { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 700; align-self: flex-start; margin-top: 4px; }
+</style>
+<div class="col light">
+  <div class="card" style="background:#F0F0F3;color:#000">
+    <div class="title">Grand Tournoi de Bordeaux</div>
+    <div class="meta" style="color:#60646C">Sam. 22 août 2026 · Bordeaux, Nouvelle-Aquitaine</div>
+    <div class="meta" style="color:#60646C">2000 pts · 5 rondes</div>
+    <div class="places">24 places restantes</div>
+  </div>
+  <div class="card" style="background:#F0F0F3;color:#000">
+    <div class="title">Challenge de Lille</div>
+    <div class="meta" style="color:#60646C">Sam. 8 août 2026 · Lille, Hauts-de-France</div>
+    <div class="places" style="color:#1E7C45">Plus que 3 places</div>
+  </div>
+  <div class="card" style="background:#F0F0F3;color:#000">
+    <div class="title" style="font-weight:500">Open de Rennes</div>
+    <div class="meta" style="color:#60646C">Sam. 5 déc. 2026 · Rennes, Bretagne</div>
+    <div class="full" style="color:#C13438;background:rgba(209,67,67,.10)">Complet</div>
+  </div>
+</div>
+<div class="col dark">
+  <div class="card" style="background:#212225;color:#fff">
+    <div class="title">Grand Tournoi de Bordeaux</div>
+    <div class="meta" style="color:#B0B4BA">Sam. 22 août 2026 · Bordeaux, Nouvelle-Aquitaine</div>
+    <div class="meta" style="color:#B0B4BA">2000 pts · 5 rondes</div>
+    <div class="places">24 places restantes</div>
+  </div>
+  <div class="card" style="background:#212225;color:#fff">
+    <div class="title">Challenge de Lille</div>
+    <div class="meta" style="color:#B0B4BA">Sam. 8 août 2026 · Lille, Hauts-de-France</div>
+    <div class="places" style="color:#63D489">Plus que 3 places</div>
+  </div>
+  <div class="card" style="background:#212225;color:#fff">
+    <div class="title">Trophée de Lyon</div>
+    <div class="meta" style="color:#B0B4BA">Sam. 12 sept. 2026 · Lyon, Auvergne-Rhône-Alpes</div>
+    <div class="places" style="color:#B0B4BA">Terminé</div>
+  </div>
+</div>

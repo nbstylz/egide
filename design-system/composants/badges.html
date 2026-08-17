@@ -1,0 +1,63 @@
+<!-- @dsCard group="Composants" -->
+<!--
+  Badges et puces. Règle : le statut se lit au MOT, jamais à la couleur seule.
+  Le rouge est réservé aux erreurs et refus — jamais pour « Non soumise »
+  ni pour l'abandon (registre neutre).
+-->
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .mode { flex: 1; min-width: 300px; border-radius: 12px; padding: 20px; }
+  .mode.light { background: #ffffff; color: #000; border: 1px solid #E0E1E6; }
+  .mode.dark { background: #000000; color: #fff; }
+  h2 { font-size: 12px; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: .6px; opacity: .6; }
+  h2:first-child { margin-top: 0; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .badge { border-radius: 999px; padding: 2px 8px; font-size: 12px; line-height: 16px; font-weight: 700; }
+  .chip { border-radius: 999px; padding: 1px 4px; font-size: 10px; line-height: 14px; }
+</style>
+<div class="mode light">
+  <h2>Statut de tournoi</h2>
+  <div class="badges">
+    <span class="badge" style="color:#9C7A1F;background:rgba(156,122,31,.10)">Inscriptions ouvertes</span>
+    <span class="badge" style="color:#9C7A1F;background:rgba(156,122,31,.10)">En cours</span>
+    <span class="badge" style="color:#60646C;background:#E0E1E6">Terminé</span>
+    <span class="badge" style="color:#C13438;background:rgba(209,67,67,.10)">Annulé</span>
+  </div>
+  <h2>Liste d'armée</h2>
+  <div class="badges">
+    <span class="badge" style="color:#60646C;border:1px solid #E0E1E6">Non soumise</span>
+    <span class="badge" style="color:#9C7A1F;background:rgba(156,122,31,.10)">Soumise</span>
+    <span class="badge" style="color:#1E7C45;background:rgba(30,124,69,.10)">Validée</span>
+    <span class="badge" style="color:#C13438;background:rgba(209,67,67,.10)">Refusée</span>
+  </div>
+  <h2>Puces contextuelles</h2>
+  <div class="badges">
+    <span class="chip" style="background:#9C7A1F;color:#fff">toi</span>
+    <span class="badge" style="color:#60646C;background:#E0E1E6;font-weight:500">Abandon · R3</span>
+    <span class="badge" style="color:#9C7A1F;background:#E0E1E6;font-weight:500">🛡 Capitaine</span>
+    <span class="badge" style="color:#C13438;background:rgba(209,67,67,.10)">Complet</span>
+  </div>
+</div>
+<div class="mode dark">
+  <h2>Statut de tournoi</h2>
+  <div class="badges">
+    <span class="badge" style="color:#D4AF37;background:rgba(212,175,55,.14)">Inscriptions ouvertes</span>
+    <span class="badge" style="color:#D4AF37;background:rgba(212,175,55,.14)">En cours</span>
+    <span class="badge" style="color:#B0B4BA;background:#2E3135">Terminé</span>
+    <span class="badge" style="color:#FF6369;background:rgba(255,99,105,.14)">Annulé</span>
+  </div>
+  <h2>Liste d'armée</h2>
+  <div class="badges">
+    <span class="badge" style="color:#B0B4BA;border:1px solid #2E3135">Non soumise</span>
+    <span class="badge" style="color:#D4AF37;background:rgba(212,175,55,.14)">Soumise</span>
+    <span class="badge" style="color:#63D489;background:rgba(99,212,137,.14)">Validée</span>
+    <span class="badge" style="color:#FF6369;background:rgba(255,99,105,.14)">Refusée</span>
+  </div>
+  <h2>Puces contextuelles</h2>
+  <div class="badges">
+    <span class="chip" style="background:#D4AF37;color:#000">toi</span>
+    <span class="badge" style="color:#B0B4BA;background:#2E3135;font-weight:500">Abandon · R3</span>
+    <span class="badge" style="color:#D4AF37;background:#2E3135;font-weight:500">🛡 Capitaine</span>
+    <span class="badge" style="color:#FF6369;background:rgba(255,99,105,.14)">Complet</span>
+  </div>
+</div>

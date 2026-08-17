@@ -1,0 +1,61 @@
+<!-- @dsCard group="Composants" -->
+<!--
+  Bloc « Le jour J » — l'écran signature d'EGIDE. Un seul élément doré par
+  écran : ce bloc, quand un match est en cours. Le numéro de table est
+  l'information qu'on cherche en marchant : 64 px, couleur texte (pas or —
+  le doré fait le cadre, le chiffre fait le contraste).
+-->
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .phone { width: 340px; border-radius: 12px; padding: 20px; }
+  .phone.light { background: #ffffff; border: 1px solid #E0E1E6; color: #000; }
+  .phone.dark { background: #000000; color: #fff; }
+  .card { border-radius: 8px; padding: 16px; }
+  .overline { font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
+  .scenario { font-size: 14px; margin-top: 4px; }
+  .match { display: flex; align-items: center; gap: 16px; padding: 8px 0; }
+  .col-table { min-width: 88px; }
+  .label { font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .table-no { font-size: 64px; line-height: 68px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .vsep { width: 1px; align-self: stretch; margin: 4px 0; }
+  .opponent { font-size: 22px; line-height: 28px; font-weight: 700; }
+  .faction { font-size: 13px; margin-top: 2px; }
+  .divider { height: 1px; margin: 8px -16px; }
+  .actions { display: flex; gap: 8px; }
+  .action { flex: 1; min-height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+  .fresh { text-align: center; font-size: 12px; margin-top: 4px; }
+</style>
+<div class="phone light">
+  <div class="card" style="background:rgba(156,122,31,.10);border:1px solid rgba(156,122,31,.35)">
+    <div class="overline" style="color:#9C7A1F">Ronde 2 sur 5</div>
+    <div class="scenario" style="color:#60646C">🗺 Le Trésor des Anciens</div>
+    <div class="match">
+      <div class="col-table"><div class="label" style="color:#60646C">Table</div><div class="table-no" style="color:#000">7</div></div>
+      <div class="vsep" style="background:rgba(156,122,31,.20)"></div>
+      <div><div class="label" style="color:#60646C">Contre</div><div class="opponent">Sarah_Khaine</div><div class="faction" style="color:#60646C">Cités de Sigmar</div></div>
+    </div>
+    <div class="divider" style="background:rgba(156,122,31,.20)"></div>
+    <div class="actions">
+      <div class="action" style="background:#fff;color:#9C7A1F">▦ Les 12 tables</div>
+      <div class="action" style="background:#fff;color:#9C7A1F">🏆 Classement</div>
+    </div>
+    <div class="fresh" style="color:#60646C">Actualisé il y a 3 min</div>
+  </div>
+</div>
+<div class="phone dark">
+  <div class="card" style="background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.35)">
+    <div class="overline" style="color:#D4AF37">Ronde 2 sur 5</div>
+    <div class="scenario" style="color:#B0B4BA">🗺 Le Trésor des Anciens</div>
+    <div class="match">
+      <div class="col-table"><div class="label" style="color:#B0B4BA">Table</div><div class="table-no" style="color:#fff">7</div></div>
+      <div class="vsep" style="background:rgba(212,175,55,.20)"></div>
+      <div><div class="label" style="color:#B0B4BA">Contre</div><div class="opponent">Sarah_Khaine</div><div class="faction" style="color:#B0B4BA">Cités de Sigmar</div></div>
+    </div>
+    <div class="divider" style="background:rgba(212,175,55,.20)"></div>
+    <div class="actions">
+      <div class="action" style="background:#000;color:#D4AF37">▦ Les 12 tables</div>
+      <div class="action" style="background:#000;color:#D4AF37">🏆 Classement</div>
+    </div>
+    <div class="fresh" style="color:#B0B4BA">Actualisé il y a 3 min</div>
+  </div>
+</div>
