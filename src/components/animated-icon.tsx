@@ -139,7 +139,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   splashOverlay: {
-    ...StyleSheet.absoluteFill,
+    // RN 0.81 : absoluteFill n'est plus typé comme objet étalable.
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: '#208AEF',
     alignItems: 'center',
     justifyContent: 'center',

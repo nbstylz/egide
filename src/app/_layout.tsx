@@ -1,5 +1,7 @@
+// SDK 54 : expo-router ne réexporte plus les thèmes de navigation.
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack, router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Platform, useColorScheme } from 'react-native';
