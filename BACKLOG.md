@@ -24,6 +24,7 @@ EGIDE est l'application de référence de la scène compétitive francophone War
 | EPIC-9 | Profil enrichi et historique de résultats | 2 | P3 |
 | EPIC-10 | Vérification poussée des listes d'armées | 2 | P3 |
 | EPIC-11 | ELO, carte interactive, stats méta, publication stores | 3 | P4 |
+| EPIC-12 | Administration de la plateforme | 2 | P3 — **en tête de phase 2** |
 
 ---
 
@@ -554,6 +555,77 @@ Lancer le back office :
 ```bash
 npm --prefix backoffice run dev
 ```
+
+## EPIC-12 — Administration de la plateforme (Phase 2)
+
+**Objectif :** donner au porteur du projet un rôle admin vérifié en base et une section d'administration dans le back office : supervision de tous les tournois, comptes et équipes, avec des actions d'urgence tracées et des garde-fous explicites.
+**Valeur utilisateur :** dès que l'app est utilisée par de vrais joueurs, quelqu'un doit pouvoir intervenir (tournoi fantôme, nom d'équipe offensant, compte problématique) sans toucher au SQL à la main — condition de confiance pour ouvrir l'app au-delà du cercle de test.
+
+**Décision du porteur du projet (2026-08-21) :** l'administration vit **uniquement dans le back office web**. Aucune page admin dans l'app mobile pour l'instant ; on pourra en ajouter plus tard si le besoin apparaît.
+
+### US-12.1 — Rôle admin et journal d'audit en base
+**En tant que** porteur du projet, **je veux** qu'un rôle admin existe en base, vérifié par la base elle-même, **afin que** les pouvoirs d'administration ne dépendent jamais de l'interface.
+- Critères :
+  1. Migration : colonne `role` sur `profiles` (`user` par défaut, `admin`), **non modifiable par l'utilisateur lui-même** (GRANT par colonne, comme le code d'invitation en 0016) ; fonction `is_admin()` en `security definer`, seule source de vérité.
+  2. Le premier admin est nommé à la main en SQL via le dashboard Supabase (assumé) ; la procédure est documentée en commentaire de la migration.
+  3. Migration : table `admin_actions` (admin, action, cible, détail, date), remplie **par les fonctions admin elles-mêmes**, jamais par le front ; lecture réservée aux admins.
+  4. Garde-fou : une fonction ne peut pas retirer le rôle du **dernier** admin.
+  5. Test SQL : un utilisateur normal qui tente `update profiles set role = 'admin'` est refusé.
+- **Taille : M** — **Dépendances :** aucune.
+
+### US-12.2 — Section « Administration » : tous les tournois
+**En tant qu'** admin, **je veux** voir tous les tournois de la plateforme, tous statuts et tous organisateurs confondus, **afin de** superviser l'activité et repérer les anomalies.
+- Critères :
+  1. Une entrée « Administration » apparaît dans la sidebar du back office **uniquement** si `is_admin()` répond vrai ; un non-admin qui force l'URL est renvoyé (et la RLS ne lui renvoie de toute façon que ses propres données).
+  2. Tableau de tous les tournois : nom, organisateur (pseudo), date, statut, inscrits/capacité ; recherche par nom et filtre par statut. Les brouillons des autres organisateurs y sont visibles (nouvelle politique RLS de lecture réservée aux admins).
+  3. Un clic ouvre la fiche de gestion existante **en lecture seule** : l'admin observe, il n'opère pas le tournoi à la place de l'organisateur.
+- **Taille : M** — **Dépendances :** US-12.1.
+
+### US-12.3 — Annulation d'un tournoi par l'admin
+**En tant qu'** admin, **je veux** annuler un tournoi manifestement problématique (faux événement, organisateur injoignable), **afin de** protéger les joueurs inscrits.
+- Critères :
+  1. Action « Annuler ce tournoi » depuis la vue US-12.2, avec confirmation qui énonce la conséquence et un motif obligatoire.
+  2. Fonction SQL dédiée : vérifie `is_admin()`, passe le statut à « annulé » (jamais de suppression physique — même règle que US-1.4), écrit le motif dans `admin_actions`.
+  3. Impossible d'annuler un tournoi « terminé » ; un tournoi « en cours » exige une double confirmation (case à cocher, comme la clôture US-3.9).
+  4. Les inscrits reçoivent la notification d'annulation via la file `push_outbox` (EPIC-6 livré).
+- **Taille : S** — **Dépendances :** US-12.2.
+
+### US-12.4 — Annuaire des comptes : recherche et désactivation
+**En tant qu'** admin, **je veux** rechercher un compte et le désactiver, **afin de** couper l'accès d'un utilisateur nuisible sans rien supprimer.
+- Critères :
+  1. Page « Comptes » : recherche par pseudo ou e-mail ; affiche pseudo, région, date de création, nombre de tournois organisés et d'inscriptions.
+  2. Action « Désactiver » (bannissement via l'API admin de Supabase Auth, donc **Edge Function** avec clé service — même patron que `send-push`) : l'utilisateur ne peut plus se connecter ; réactivation possible ; motif obligatoire, tracé dans `admin_actions`.
+  3. Un admin ne peut pas désactiver un autre admin ni lui-même.
+  4. Aucune donnée du compte n'est supprimée : tournois, résultats et équipes restent intacts.
+- **Taille : L** — **Dépendances :** US-12.1.
+
+### US-12.5 — Gestion des équipes : renommer, dissoudre
+**En tant qu'** admin, **je veux** renommer une équipe au nom offensant ou dissoudre une équipe abandonnée, **afin de** garder l'annuaire des équipes sain.
+- Critères :
+  1. Page « Équipes » : toutes les équipes (nom, capitaine, membres, région), recherche par nom.
+  2. Renommage avec motif obligatoire, tracé ; le capitaine constate le nouveau nom.
+  3. Dissolution avec confirmation renforcée, via la fonction `disband_team` existante étendue aux admins, tracée. **Attention EPIC-7 :** quand les tournois par équipes existeront, la dissolution devra préserver l'historique — à re-trancher à ce moment-là.
+- **Taille : S** — **Dépendances :** US-12.1.
+
+### US-12.6 — Tableau de bord : statistiques globales
+**En tant qu'** admin, **je veux** voir les chiffres clés de la plateforme, **afin de** suivre si EGIDE prend dans la communauté.
+- Critères :
+  1. Page d'accueil de la section Administration : nombre de comptes, de tournois (par statut), d'inscriptions, d'équipes — calculés par une fonction SQL réservée aux admins.
+  2. Un chiffre d'activité récente : comptes créés et tournois publiés sur les 30 derniers jours.
+  3. Lecture seule, aucun graphique exigé en v1 (des nombres et des libellés suffisent).
+- **Taille : S** — **Dépendances :** US-12.1.
+
+### Hors périmètre v1 (noté, à re-prioriser plus tard)
+- Suppression physique de données, modification de scores/classements par l'admin, connexion « en tant que » un utilisateur, signalements utilisateurs (attendre le chat, EPIC-8), export de données, rôles intermédiaires (modérateur), et **toute page admin dans l'app mobile**.
+
+### Garde-fous : ce qu'un admin ne doit PAS pouvoir faire
+- Lire un mot de passe (impossible par construction : Supabase ne stocke que des hachés).
+- Modifier un score ou le classement d'un tournoi **terminé** — le verrou de `close_tournament` s'applique aussi à l'admin.
+- Soumettre ou modifier une liste d'armée à la place d'un joueur.
+- Supprimer physiquement un tournoi ayant des inscrits (annulation seulement).
+- Se retirer son propre rôle s'il est le dernier admin.
+
+---
 
 ## Points d'attention (écarts et risques)
 

@@ -33,10 +33,18 @@ type Props = {
   onSaved: () => void;
   /** Appelé quand l'utilisateur annule la modification (absent en création). */
   onCancel?: () => void;
+  /** Libellé du bouton principal, si le contexte demande autre chose. */
+  submitLabel?: string;
 };
 
 /** Formulaire de création / modification du profil joueur. */
-export function ProfileForm({ userId, initialProfile, onSaved, onCancel }: Props) {
+export function ProfileForm({
+  userId,
+  initialProfile,
+  onSaved,
+  onCancel,
+  submitLabel,
+}: Props) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
@@ -128,7 +136,7 @@ export function ProfileForm({ userId, initialProfile, onSaved, onCancel }: Props
             ]}
             onPress={handleSave}>
             <ThemedText style={styles.buttonPrimaryText}>
-              {initialProfile ? 'Enregistrer' : 'Créer mon profil'}
+              {submitLabel ?? (initialProfile ? 'Enregistrer' : 'Créer mon profil')}
             </ThemedText>
           </Pressable>
           {onCancel && (

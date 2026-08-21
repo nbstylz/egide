@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Switch, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthForm } from '@/components/auth-form';
 import { ProfileForm } from '@/components/profile-form';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Colors, MaxContentWidth, OnTint, Spacing } from '@/constants/theme';
+import { useGuest } from '@/hooks/use-guest';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
 import { registerForPush } from '@/lib/push';
@@ -15,9 +16,11 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 export default function ProfilScreen() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const mode = scheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[mode];
   const { session, loading } = useSession();
   const { profile, loading: profileLoading, refresh } = useProfile(session?.user.id);
+  const { forgetGuest } = useGuest();
   const [editing, setEditing] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMessage, setPushMessage] = useState<string | null>(null);
@@ -75,12 +78,36 @@ export default function ProfilScreen() {
   } else if (loading || (session && profileLoading)) {
     content = <ActivityIndicator color={colors.tint} />;
   } else if (!session) {
+    // Visiteur sans compte : l'authentification vit désormais dans le
+    // parcours d'entrée, pas ici. Cet écran ne fait qu'y renvoyer.
     content = (
       <>
-        <ThemedText style={styles.centeredText}>
-          Connecte-toi pour t’inscrire aux tournois et rejoindre une équipe.
+        <Ionicons name="person-circle-outline" size={64} color={colors.textSecondary} />
+        <ThemedText type="subtitle" style={styles.centeredText}>
+          Profil
         </ThemedText>
-        <AuthForm />
+        <ThemedText style={styles.centeredText}>
+          Tu navigues sans compte. Crée-en un pour t’inscrire aux tournois, rejoindre une équipe
+          et suivre tes résultats.
+        </ThemedText>
+        <Pressable
+          style={({ pressed }) => [
+            styles.button,
+            { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },
+          ]}
+          onPress={() => router.push('/(auth)/inscription')}>
+          <ThemedText style={{ color: OnTint[mode], fontWeight: '600' }}>
+            Créer un compte
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.button,
+            { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.8 : 1 },
+          ]}
+          onPress={() => router.push('/(auth)/connexion')}>
+          <ThemedText>Se connecter</ThemedText>
+        </Pressable>
       </>
     );
   } else if (!profile || editing) {
@@ -177,7 +204,12 @@ export default function ProfilScreen() {
             styles.button,
             { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.8 : 1 },
           ]}
-          onPress={() => supabase?.auth.signOut()}>
+          onPress={async () => {
+            // Après un départ volontaire, l'écran d'accueil doit revenir :
+            // sans cela, le drapeau invité renverrait droit aux onglets.
+            await forgetGuest();
+            await supabase?.auth.signOut();
+          }}>
           <ThemedText>Déconnexion</ThemedText>
         </Pressable>
       </>
