@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { RegionPicker } from '@/components/region-picker';
 import { SegmentedControl } from '@/components/segmented-control';
 import { Stepper } from '@/components/stepper';
 import { ThemedText } from '@/components/themed-text';
@@ -20,6 +21,7 @@ import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
 import { maskDateInput, parseFrenchDate } from '@/lib/dates';
+import { matchRegion } from '@/lib/regions';
 import { supabase } from '@/lib/supabase';
 
 const ErrorColor = { light: '#D14343', dark: '#FF6369' };
@@ -48,7 +50,8 @@ export default function CreerTournoiScreen() {
   // Pré-remplit la région avec celle du profil (recommandation UX).
   useEffect(() => {
     if (profile?.region) {
-      setRegion((current) => (current === '' ? profile.region! : current));
+      const known = matchRegion(profile.region);
+      if (known) setRegion((current) => (current === '' ? known : current));
     }
   }, [profile]);
 
@@ -66,6 +69,7 @@ export default function CreerTournoiScreen() {
 
     if (name.trim().length < 3) nextErrors.name = 'Le nom est obligatoire (3 caractères min.).';
     if (city.trim() === '') nextErrors.city = 'Indique la ville du tournoi.';
+    if (region.trim() === '') nextErrors.region = 'Choisis la région du tournoi.';
 
     const isoDate = parseFrenchDate(dateText);
     if (!isoDate) {
@@ -98,7 +102,7 @@ export default function CreerTournoiScreen() {
       organizer_id: session.user.id,
       name: name.trim(),
       city: city.trim(),
-      region: region.trim() || null,
+      region: region.trim(),
       event_date: validated.isoDate,
       points_limit: validated.points,
       rounds_count: rounds,
@@ -180,17 +184,15 @@ export default function CreerTournoiScreen() {
           {renderError('city')}
         </View>
 
-        <View style={styles.field}>
-          <ThemedText type="small">Région (optionnel)</ThemedText>
-          <TextInput
-            style={inputStyle('region')}
-            placeholder="Région (ex. Auvergne-Rhône-Alpes)"
-            placeholderTextColor={colors.textSecondary}
-            value={region}
-            onChangeText={setRegion}
-            editable={!busy}
-          />
-        </View>
+        <RegionPicker
+          value={region}
+          onChange={(value) => {
+            setRegion(value);
+            setErrors((current) => ({ ...current, region: '' }));
+          }}
+          error={errors.region || null}
+          disabled={busy}
+        />
 
         <View style={styles.field}>
           <ThemedText type="small">Date</ThemedText>

@@ -12,11 +12,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { RegionPicker } from '@/components/region-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
+import { matchRegion } from '@/lib/regions';
 import { supabase } from '@/lib/supabase';
 import { teamErrorMessage } from '@/lib/teams';
 
@@ -33,14 +35,16 @@ export default function CreerEquipeScreen() {
   const [region, setRegion] = useState('');
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
+  const [regionError, setRegionError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Une équipe se recrute d'abord près de chez soi : on part de la région du profil.
+  // Une équipe se recrute d'abord près de chez soi : on part de la région du
+  // profil, ramenée à la liste officielle (les anciens profils ont pu la
+  // saisir librement).
   useEffect(() => {
-    if (profile?.region) {
-      setRegion((current) => (current === '' ? profile.region! : current));
-    }
+    const known = matchRegion(profile?.region);
+    if (known) setRegion((current) => (current === '' ? known : current));
   }, [profile]);
 
   async function handleSubmit() {
@@ -49,13 +53,18 @@ export default function CreerEquipeScreen() {
       setNameError('Le nom doit contenir au moins 3 caractères.');
       return;
     }
+    if (region.trim() === '') {
+      setRegionError('Choisis la région de ton équipe.');
+      return;
+    }
     setNameError(null);
+    setRegionError(null);
     setServerError(null);
     setBusy(true);
     const { error } = await supabase.rpc('create_team', {
       p_name: name.trim(),
       p_description: description.trim() || null,
-      p_region: region.trim() || null,
+      p_region: region.trim(),
     });
     setBusy(false);
 
@@ -125,24 +134,15 @@ export default function CreerEquipeScreen() {
           )}
         </View>
 
-        <View style={styles.field}>
-          <ThemedText type="small">Région (optionnel)</ThemedText>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: colors.backgroundElement,
-                color: colors.text,
-                borderColor: colors.backgroundSelected,
-              },
-            ]}
-            placeholder="Région (ex. Auvergne-Rhône-Alpes)"
-            placeholderTextColor={colors.textSecondary}
-            value={region}
-            onChangeText={setRegion}
-            editable={!busy}
-          />
-        </View>
+        <RegionPicker
+          value={region}
+          onChange={(value) => {
+            setRegion(value);
+            setRegionError(null);
+          }}
+          error={regionError}
+          disabled={busy}
+        />
 
         <View style={styles.field}>
           <ThemedText type="small">Présentation (optionnel)</ThemedText>

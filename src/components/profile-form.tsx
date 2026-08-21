@@ -7,10 +7,12 @@ import {
   useColorScheme,
 } from 'react-native';
 
+import { RegionPicker } from '@/components/region-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
 import type { Profile } from '@/hooks/use-profile';
+import { matchRegion } from '@/lib/regions';
 import { supabase } from '@/lib/supabase';
 
 /** Traduit les erreurs Postgres les plus courantes en français. */
@@ -49,7 +51,10 @@ export function ProfileForm({
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
   const [pseudo, setPseudo] = useState(initialProfile?.pseudo ?? '');
-  const [region, setRegion] = useState(initialProfile?.region ?? '');
+  // Un profil ancien a pu saisir sa région librement : on la ramène à la
+  // liste officielle plutôt que d'afficher un champ vide.
+  const [region, setRegion] = useState(matchRegion(initialProfile?.region) ?? '');
+  const [regionError, setRegionError] = useState<string | null>(null);
   const [faction, setFaction] = useState(initialProfile?.faction_favorite ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,14 +66,19 @@ export function ProfileForm({
       setError('Le pseudo doit contenir entre 3 et 24 caractères.');
       return;
     }
+    if (region.trim() === '') {
+      setRegionError('Choisis ta région : elle sert à te proposer les tournois près de chez toi.');
+      return;
+    }
 
     setBusy(true);
     setError(null);
+    setRegionError(null);
     // upsert : insère le profil s'il n'existe pas, le met à jour sinon.
     const { error: dbError } = await supabase.from('profiles').upsert({
       id: userId,
       pseudo: trimmedPseudo,
-      region: region.trim() || null,
+      region: region.trim(),
       faction_favorite: faction.trim() || null,
       updated_at: new Date().toISOString(),
     });
@@ -102,13 +112,14 @@ export function ProfileForm({
         maxLength={24}
         editable={!busy}
       />
-      <TextInput
-        style={inputStyle}
-        placeholder="Région (optionnel, ex. Île-de-France)"
-        placeholderTextColor={colors.textSecondary}
+      <RegionPicker
         value={region}
-        onChangeText={setRegion}
-        editable={!busy}
+        onChange={(value) => {
+          setRegion(value);
+          setError(null);
+        }}
+        error={regionError}
+        disabled={busy}
       />
       <TextInput
         style={inputStyle}
