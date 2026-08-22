@@ -17,7 +17,7 @@ import { SegmentedControl } from '@/components/segmented-control';
 import { Stepper } from '@/components/stepper';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Colors, MaxContentWidth, OnTint, Spacing } from '@/constants/theme';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
 import { maskDateInput, parseFrenchDate } from '@/lib/dates';
@@ -29,7 +29,8 @@ const PointsPresets = [1000, 1500, 2000] as const;
 
 export default function CreerTournoiScreen() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const mode = scheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[mode];
   const errorColor = ErrorColor[scheme === 'dark' ? 'dark' : 'light'];
   const { session, loading: sessionLoading } = useSession();
   const { profile } = useProfile(session?.user.id);
@@ -142,7 +143,7 @@ export default function CreerTournoiScreen() {
             { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },
           ]}
           onPress={() => router.replace('/profil')}>
-          <ThemedText style={styles.primaryButtonText}>Se connecter</ThemedText>
+          <ThemedText style={[styles.primaryButtonText, { color: OnTint[mode] }]}>Se connecter</ThemedText>
         </Pressable>
       </View>
     );
@@ -320,9 +321,9 @@ export default function CreerTournoiScreen() {
           ]}
           onPress={handleSubmit}>
           {busy ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={OnTint[mode]} />
           ) : (
-            <ThemedText style={styles.primaryButtonText}>Créer le tournoi</ThemedText>
+            <ThemedText style={[styles.primaryButtonText, { color: OnTint[mode] }]}>Créer le tournoi</ThemedText>
           )}
         </Pressable>
         <Pressable
@@ -434,7 +435,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   primaryButtonText: {
-    color: '#ffffff',
     fontWeight: '600',
   },
   secondaryButton: {

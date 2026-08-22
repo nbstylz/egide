@@ -16,13 +16,14 @@ import { ScreenHeader } from '@/components/screen-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MyTournamentCard } from '@/components/tournament-card';
-import { BottomTabInset, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Colors, MaxContentWidth, OnTint, Spacing } from '@/constants/theme';
 import { useMyTournaments } from '@/hooks/use-tournaments';
 import { useSession } from '@/hooks/use-session';
 
 function CreateButton({ onPress }: { onPress: () => void }) {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const mode = scheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[mode];
   return (
     <Pressable
       style={({ pressed }) => [
@@ -30,15 +31,16 @@ function CreateButton({ onPress }: { onPress: () => void }) {
         { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },
       ]}
       onPress={onPress}>
-      <Ionicons name="add-circle-outline" size={20} color="#ffffff" />
-      <ThemedText style={styles.createButtonText}>Créer un tournoi</ThemedText>
+      <Ionicons name="add-circle-outline" size={20} color={OnTint[mode]} />
+      <ThemedText style={[styles.createButtonText, { color: OnTint[mode] }]}>Créer un tournoi</ThemedText>
     </Pressable>
   );
 }
 
 export default function TournoisScreen() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const mode = scheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[mode];
   const { session, loading: sessionLoading } = useSession();
   const { tournaments, loading, refresh } = useMyTournaments(session?.user.id);
 
@@ -75,7 +77,7 @@ export default function TournoisScreen() {
             { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },
           ]}
           onPress={() => router.push('/profil')}>
-          <ThemedText style={styles.createButtonText}>Se connecter</ThemedText>
+          <ThemedText style={[styles.createButtonText, { color: OnTint[mode] }]}>Se connecter</ThemedText>
         </Pressable>
       </View>
     );
@@ -164,7 +166,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.three,
   },
   createButtonText: {
-    color: '#ffffff',
     fontWeight: '600',
   },
   signInButton: {

@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RegionPicker } from '@/components/region-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Colors, MaxContentWidth, OnTint, Spacing } from '@/constants/theme';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
 import { matchRegion } from '@/lib/regions';
@@ -26,7 +26,8 @@ const ErrorColor = { light: '#D14343', dark: '#FF6369' };
 
 export default function CreerEquipeScreen() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const mode = scheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[mode];
   const errorColor = ErrorColor[scheme === 'dark' ? 'dark' : 'light'];
   const { session, loading: sessionLoading } = useSession();
   const { profile } = useProfile(session?.user.id);
@@ -91,7 +92,7 @@ export default function CreerEquipeScreen() {
             { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },
           ]}
           onPress={() => router.replace('/profil')}>
-          <ThemedText style={styles.primaryButtonText}>Se connecter</ThemedText>
+          <ThemedText style={[styles.primaryButtonText, { color: OnTint[mode] }]}>Se connecter</ThemedText>
         </Pressable>
       </View>
     );
@@ -190,9 +191,9 @@ export default function CreerEquipeScreen() {
           ]}
           onPress={handleSubmit}>
           {busy ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={OnTint[mode]} />
           ) : (
-            <ThemedText style={styles.primaryButtonText}>Créer l’équipe</ThemedText>
+            <ThemedText style={[styles.primaryButtonText, { color: OnTint[mode] }]}>Créer l’équipe</ThemedText>
           )}
         </Pressable>
         <Pressable
@@ -299,7 +300,6 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   primaryButtonText: {
-    color: '#ffffff',
     fontWeight: '600',
   },
   secondaryButton: {

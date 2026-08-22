@@ -11,7 +11,7 @@ import { FactionPicker } from '@/components/faction-picker';
 import { RegionPicker } from '@/components/region-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, Spacing } from '@/constants/theme';
+import { Colors, OnTint, Spacing } from '@/constants/theme';
 import type { Profile } from '@/hooks/use-profile';
 import { matchFaction } from '@/lib/factions';
 import { matchRegion } from '@/lib/regions';
@@ -50,7 +50,8 @@ export function ProfileForm({
   submitLabel,
 }: Props) {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const mode = scheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[mode];
 
   const [pseudo, setPseudo] = useState(initialProfile?.pseudo ?? '');
   // Un profil ancien a pu saisir sa région librement : on la ramène à la
@@ -151,7 +152,7 @@ export function ProfileForm({
               { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },
             ]}
             onPress={handleSave}>
-            <ThemedText style={styles.buttonPrimaryText}>
+            <ThemedText style={[styles.buttonPrimaryText, { color: OnTint[mode] }]}>
               {submitLabel ?? (initialProfile ? 'Enregistrer' : 'Créer mon profil')}
             </ThemedText>
           </Pressable>
@@ -192,7 +193,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonPrimaryText: {
-    color: '#ffffff',
     fontWeight: '600',
   },
 });

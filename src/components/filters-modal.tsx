@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SegmentedControl } from '@/components/segmented-control';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Colors, MaxContentWidth, OnTint, Spacing } from '@/constants/theme';
 import type { TournamentWithCount } from '@/hooks/use-tournaments';
 import { maskDateInput } from '@/lib/dates';
 import {
@@ -387,7 +387,7 @@ export function FiltersModal({
                   opacity: ctaDisabled ? 0.5 : pressed ? 0.8 : 1,
                 },
               ]}>
-              <ThemedText style={styles.ctaText}>{ctaLabel}</ThemedText>
+              <ThemedText style={[styles.ctaText, { color: OnTint[mode] }]}>{ctaLabel}</ThemedText>
             </Pressable>
             {results.length === 0 && !invalidDates ? (
               <ThemedText type="small" themeColor="textSecondary" style={styles.ctaHint}>
@@ -492,7 +492,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaText: {
-    color: '#ffffff',
     fontWeight: '600',
   },
   ctaHint: {

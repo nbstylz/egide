@@ -20,7 +20,7 @@ import { ScreenHeader } from '@/components/screen-header';
 import { SegmentedControl } from '@/components/segmented-control';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Colors, MaxContentWidth, OnTint, Spacing } from '@/constants/theme';
 import { useMyTeam, useTeams, type TeamMember } from '@/hooks/use-my-team';
 import { useSession } from '@/hooks/use-session';
 import { CodeLength } from '@/lib/invite-code';
@@ -117,7 +117,8 @@ function MemberActions({
 
 export default function EquipesScreen() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const mode = scheme === 'dark' ? 'dark' : 'light';
+  const colors = Colors[mode];
   const { session, loading: sessionLoading } = useSession();
   const userId = session?.user.id;
   const { team, inviteCode, setInviteCode, isCaptain, loading, refresh } = useMyTeam(userId);
@@ -235,7 +236,7 @@ export default function EquipesScreen() {
               { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },
             ]}
             onPress={() => router.push('/profil')}>
-            <ThemedText style={styles.primaryButtonText}>Se connecter</ThemedText>
+            <ThemedText style={[styles.primaryButtonText, { color: OnTint[mode] }]}>Se connecter</ThemedText>
           </Pressable>
         </SafeAreaView>
       </ThemedView>
@@ -503,7 +504,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#ffffff',
     fontWeight: '600',
   },
   teamHeading: {

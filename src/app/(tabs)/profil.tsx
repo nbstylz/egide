@@ -364,8 +364,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'stretch',
   },
-  buttonPrimaryText: {
-    color: '#ffffff',
-    fontWeight: '600',
-  },
 });
