@@ -66,11 +66,18 @@ export function Layout({ email, pseudo, tournament, children }: Props) {
               })}
             </>
           ) : (
-            <NavLink
-              to="/tournois"
-              className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}>
-              <span>Mes tournois</span>
-            </NavLink>
+            <>
+              <NavLink
+                to="/tournois"
+                className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}>
+                <span>Mes tournois</span>
+              </NavLink>
+              <NavLink
+                to="/circuits"
+                className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}>
+                <span>Circuits</span>
+              </NavLink>
+            </>
           )}
         </nav>
 

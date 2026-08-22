@@ -13,6 +13,7 @@ import { ListesPage } from './pages/listes';
 import { PlaceholderPage } from './pages/placeholder';
 import { TournoiDetailPage } from './pages/tournoi-detail';
 import { TournoisPage } from './pages/tournois';
+import { CircuitsPage } from './pages/circuits';
 
 /** Liste « Mes tournois » avec son chargement de données. */
 function TournoisRoute({ userId, email, pseudo }: { userId: string; email: string; pseudo: string | null }) {
@@ -127,6 +128,14 @@ export default function App() {
       <Route
         path="/tournois"
         element={<TournoisRoute userId={session.user.id} email={email} pseudo={pseudo} />}
+      />
+      <Route
+        path="/circuits"
+        element={
+          <Layout email={email} pseudo={pseudo}>
+            <CircuitsPage userId={session.user.id} />
+          </Layout>
+        }
       />
       <Route path="/tournois/:id" element={<TournoiRoute userId={session.user.id} email={email} pseudo={pseudo} />} />
       <Route
