@@ -16,8 +16,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FactionPicker } from '@/components/faction-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { matchFaction } from '@/lib/factions';
 import {
   Colors,
   Fonts,
@@ -82,18 +84,25 @@ export default function ListeArmeeScreen() {
     // `listLoading` retombe à faux tant que l'inscription n'est pas connue :
     // il faut donc aussi attendre la session et la fiche du tournoi.
     if (seeded || sessionLoading || tournamentLoading || listLoading || profileLoading) return;
+    // `matchFaction` ramène une ancienne saisie libre vers l'entrée officielle,
+    // et renvoie null si rien ne correspond : le sélecteur repart alors vide
+    // plutôt que d'afficher une valeur qu'il ne saurait pas resélectionner.
+    const seed = (raw: string | null | undefined) => matchFaction(raw) ?? '';
     if (list) {
       setContent(list.content);
-      setFaction(list.faction ?? profile?.faction_favorite ?? '');
+      setFaction(seed(list.faction ?? profile?.faction_favorite));
     } else {
-      setFaction(profile?.faction_favorite ?? '');
+      setFaction(seed(profile?.faction_favorite));
     }
     setSeeded(true);
   }, [seeded, sessionLoading, tournamentLoading, listLoading, profileLoading, list, profile?.faction_favorite]);
 
   const submissionsOpen = tournament?.status === 'open';
   const readOnly = !submissionsOpen || list?.status === 'approved';
-  const dirty = seeded && (content !== (list?.content ?? '') || faction !== (list?.faction ?? (profile?.faction_favorite ?? '')));
+  const dirty =
+    seeded &&
+    (content !== (list?.content ?? '') ||
+      faction !== (matchFaction(list?.faction ?? profile?.faction_favorite) ?? ''));
 
   function goBack() {
     if (!dirty || readOnly) {
@@ -269,30 +278,19 @@ export default function ListeArmeeScreen() {
             <ThemedText type="small" themeColor="textSecondary">
               Faction
             </ThemedText>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.backgroundElement,
-                  color: colors.text,
-                  borderColor: factionError ? RedColor[mode] : 'transparent',
-                },
-              ]}
+            {/* Liste fermée : la saisie libre rendait tout regroupement faux
+                (« nighthaunt » et « Nighthaunt » ne se rencontraient jamais). */}
+            <FactionPicker
+              label=""
               value={faction}
-              onChangeText={(value) => {
+              onChange={(value) => {
                 setFaction(value);
                 setFactionError(false);
               }}
-              placeholder="Ex. Stormcast Eternals"
-              placeholderTextColor={colors.textSecondary}
-              editable={!busy}
-              maxLength={60}
+              disabled={busy}
+              error={factionError ? 'Indique ta faction.' : null}
+              hint="Ta faction alimente tes statistiques personnelles."
             />
-            {factionError ? (
-              <ThemedText style={[styles.fieldError, { color: RedColor[mode] }]}>
-                Indique ta faction.
-              </ThemedText>
-            ) : null}
           </View>
 
           <View style={styles.field}>

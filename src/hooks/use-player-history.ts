@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { matchFaction } from '@/lib/factions';
 import { supabase } from '@/lib/supabase';
 import type { TournamentStatus } from '@/lib/tournaments';
 
@@ -23,6 +24,8 @@ export type HistoryLine = {
   points_for: number;
   points_against: number;
   dropped: boolean;
+  /** Faction déclarée sur la liste d'armée, ou null si aucune liste. */
+  faction: string | null;
 };
 
 /**
@@ -99,4 +102,59 @@ export function summarize(history: HistoryLine[]): HistorySummary {
     if (line.rank === 1) summary.victories += 1;
   }
   return summary;
+}
+
+export type FactionTally = {
+  /** Nom officiel, ou null pour le lot « faction non renseignée ». */
+  faction: string | null;
+  tournaments: number;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+};
+
+/**
+ * Regroupe l'historique par faction jouée.
+ *
+ * `matchFaction` ramène les saisies libres héritées vers l'entrée officielle,
+ * et rend `null` quand rien ne correspond : ces tournois rejoignent alors le
+ * lot « non renseignée » plutôt que de fabriquer une faction fantôme. Deux
+ * lignes pour une même armée seraient prises pour un bug — et auraient
+ * raison de l'être.
+ *
+ * Le lot « non renseignée » revient toujours en dernier : c'est lui qui fait
+ * boucler les totaux avec les tuiles de synthèse, donc qui rend le bloc
+ * crédible.
+ */
+export function summarizeByFaction(history: HistoryLine[]): FactionTally[] {
+  const byFaction = new Map<string | null, FactionTally>();
+  for (const line of history) {
+    const key = matchFaction(line.faction);
+    const tally = byFaction.get(key) ?? {
+      faction: key,
+      tournaments: 0,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+    };
+    tally.tournaments += 1;
+    tally.played += line.played;
+    tally.wins += line.wins;
+    tally.draws += line.draws;
+    tally.losses += line.losses;
+    byFaction.set(key, tally);
+  }
+
+  const known = [...byFaction.values()].filter((tally) => tally.faction !== null);
+  const unknown = byFaction.get(null);
+
+  // Tri par parties jouées, jamais par victoires : trier par victoires
+  // fabriquerait un classement, donc un superlatif, donc le mensonge qu'on
+  // cherche à éviter sur de petits échantillons.
+  known.sort(
+    (a, b) => b.played - a.played || (a.faction ?? '').localeCompare(b.faction ?? '', 'fr')
+  );
+  return unknown ? [...known, unknown] : known;
 }

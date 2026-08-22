@@ -7,11 +7,13 @@ import {
   useColorScheme,
 } from 'react-native';
 
+import { FactionPicker } from '@/components/faction-picker';
 import { RegionPicker } from '@/components/region-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
 import type { Profile } from '@/hooks/use-profile';
+import { matchFaction } from '@/lib/factions';
 import { matchRegion } from '@/lib/regions';
 import { supabase } from '@/lib/supabase';
 
@@ -55,7 +57,10 @@ export function ProfileForm({
   // liste officielle plutôt que d'afficher un champ vide.
   const [region, setRegion] = useState(matchRegion(initialProfile?.region) ?? '');
   const [regionError, setRegionError] = useState<string | null>(null);
-  const [faction, setFaction] = useState(initialProfile?.faction_favorite ?? '');
+  // Une ancienne saisie libre est ramenée vers l'entrée officielle ; si elle
+  // ne correspond à rien, le champ repart vide plutôt que d'afficher une
+  // valeur que le sélecteur ne saurait pas resélectionner.
+  const [faction, setFaction] = useState(matchFaction(initialProfile?.faction_favorite) ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -121,13 +126,13 @@ export function ProfileForm({
         error={regionError}
         disabled={busy}
       />
-      <TextInput
-        style={inputStyle}
-        placeholder="Faction favorite (optionnel, ex. Stormcast Eternals)"
-        placeholderTextColor={colors.textSecondary}
+      {/* Même liste fermée que sur la soumission de liste d'armée : deux
+          saisies libres pour la même notion, c'était deux vocabulaires. */}
+      <FactionPicker
+        label="Faction favorite (optionnel)"
         value={faction}
-        onChangeText={setFaction}
-        editable={!busy}
+        onChange={setFaction}
+        disabled={busy}
       />
 
       {error && (

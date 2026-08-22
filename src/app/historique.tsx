@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FactionRow } from '@/components/faction-row';
 import { HistoriqueRow } from '@/components/historique-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -24,7 +25,12 @@ import {
   TintBorder,
   type ThemeColor,
 } from '@/constants/theme';
-import { summarize, usePlayerHistory, type HistoryLine } from '@/hooks/use-player-history';
+import {
+  summarize,
+  summarizeByFaction,
+  usePlayerHistory,
+  type HistoryLine,
+} from '@/hooks/use-player-history';
 import { useSession } from '@/hooks/use-session';
 import { ordinalFr } from '@/lib/ordinal';
 import { formatEventDateShort } from '@/lib/tournaments';
@@ -177,6 +183,7 @@ export default function HistoriqueScreen() {
             ) : null}
           </View>
         }
+        ListFooterComponent={<FactionsSection lines={finished} colors={colors} />}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.tint} />
@@ -192,6 +199,64 @@ export default function HistoriqueScreen() {
         {body}
       </SafeAreaView>
     </ThemedView>
+  );
+}
+
+/**
+ * Les factions jouées, en pied de liste.
+ *
+ * En pied et non en tête : les tuiles du haut répondent à « où j'en suis »,
+ * la faction à « avec quoi j'ai joué » — une question de fin de lecture, qui
+ * n'a rien à faire dans le parcours d'un jour de tournoi.
+ */
+function FactionsSection({
+  lines,
+  colors,
+}: {
+  lines: HistoryLine[];
+  colors: Record<ThemeColor, string>;
+}) {
+  const tallies = useMemo(() => summarizeByFaction(lines), [lines]);
+  if (lines.length === 0) return null;
+
+  const known = tallies.filter((tally) => tally.faction !== null);
+  const covered = known.reduce((total, tally) => total + tally.tournaments, 0);
+
+  return (
+    <View style={styles.factions}>
+      <ThemedText style={styles.sectionTitle}>Factions jouées</ThemedText>
+
+      {known.length === 0 ? (
+        <View style={[styles.factionEmpty, { backgroundColor: colors.backgroundElement }]}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Aucune faction connue pour l’instant. Elle est enregistrée avec ta liste d’armée :
+            dès ta prochaine liste soumise, ce tournoi apparaîtra ici.
+          </ThemedText>
+        </View>
+      ) : (
+        <>
+          {/* Ne rien dire quand la couverture est totale : une précision
+              inutile ressemble à un avertissement. */}
+          {covered < lines.length ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              Basé sur {covered} de tes {lines.length} tournois.
+            </ThemedText>
+          ) : null}
+          {tallies.map((tally) => (
+            <FactionRow key={tally.faction ?? '—'} tally={tally} />
+          ))}
+          {covered < lines.length ? (
+            // La cause est extérieure au joueur : le dire lève le soupçon de
+            // reproche sans effort. Le champ est obligatoire à la soumission,
+            // donc l'absence ne vient presque jamais d'un oubli de sa part.
+            <ThemedText type="small" themeColor="textSecondary">
+              La faction est enregistrée avec ta liste d’armée. Les tournois qui n’en
+              demandaient pas n’en ont pas.
+            </ThemedText>
+          ) : null}
+        </>
+      )}
+    </View>
   );
 }
 
@@ -292,6 +357,18 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: Spacing.six,
+  },
+  factions: {
+    gap: Spacing.two,
+    paddingTop: Spacing.four,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  factionEmpty: {
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
   },
   tiles: {
     flexDirection: 'row',
