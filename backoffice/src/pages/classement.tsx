@@ -12,6 +12,7 @@ import {
   type TieBreakerKey,
 } from '../hooks/use-standings';
 import { formatEventDateShort } from '../lib/tournaments';
+import { downloadCsv, slugForFile } from '../lib/export';
 
 type Props = {
   tournament: TournamentWithCount | null;
@@ -206,6 +207,36 @@ export function ClassementPage({
     needle !== ''
       ? (standings.find((s) => normalize(s.pseudo).includes(needle))?.player_id ?? null)
       : null;
+
+  /** Exporte le classement courant en CSV (ouvrable dans Excel / Sheets). */
+  function exportCsv() {
+    if (!tournament) return;
+    const headers = [
+      'Rang', 'Joueur', 'Faction', 'Victoires (nul=0,5)', 'V', 'N', 'D',
+      'Points marqués', 'Points encaissés', 'Différentiel', 'Tactiques',
+      'Force des adversaires', 'Abandon',
+    ];
+    const rows = standings.map((s) => [
+      s.rank,
+      s.pseudo,
+      s.faction_favorite ?? '',
+      num(s.win_score),
+      s.wins,
+      s.draws,
+      s.losses,
+      s.points_for,
+      s.points_against,
+      s.point_diff,
+      s.tactics,
+      num(s.opponents_wins),
+      s.dropped ? (s.dropped_round ? `Ronde ${s.dropped_round}` : 'Oui') : '',
+    ]);
+    downloadCsv(
+      `classement-${slugForFile(tournament.name)}-${tournament.event_date}.csv`,
+      headers,
+      rows
+    );
+  }
 
   /** Le bloc « pourquoi suis-je Nᵉ ? ». */
   function renderExplain(standing: Standing, index: number) {
@@ -402,8 +433,11 @@ export function ClassementPage({
               if (event.key === 'Escape') setSearch('');
             }}
           />
+          <button className="btn btn-secondary" onClick={exportCsv}>
+            Exporter CSV
+          </button>
           <button className="btn btn-secondary" onClick={() => setProjection(true)}>
-            Affichage projection
+            Projection / PDF
           </button>
         </div>
       </div>
