@@ -1,7 +1,7 @@
 # EGIDE — résumé du projet
 
 > Document de passation : à donner tel quel au début d'une nouvelle conversation pour
-> reprendre le travail sans repartir de zéro. Dernière mise à jour : 22 août 2026.
+> reprendre le travail sans repartir de zéro. Dernière mise à jour : 23 août 2026.
 
 ## 1. Le projet en trois phrases
 
@@ -53,7 +53,8 @@ Fonctions clés : `register_for_tournament`, `promote_waitlist`, `start_tourname
 
 ## 4. État d'avancement
 
-**Livré et testé : EPIC-1 à EPIC-6** — soit la totalité du MVP phase 1.
+**Livré et testé : EPIC-1 à 6 (MVP phase 1), EPIC-12 (administration) et EPIC-9 (profil enrichi).**
+Migrations 0001 à 0037.
 
 | EPIC | Contenu | État |
 |---|---|---|
@@ -63,7 +64,11 @@ Fonctions clés : `register_for_tournament`, `promote_waitlist`, `start_tourname
 | 4 | Équipes (création, code d'invitation, roster, capitanat) | Livré |
 | 5 | Listes d'armées (texte + PDF, relecture organisateur) | Livré |
 | 6 | Notifications push | **Codé, réception non vérifiée** |
-| 12 | Administration (rôle admin, supervision) | Spécifié, non codé |
+| 9 | Profil enrichi : historique des tournois, factions jouées | Livré (2026-08-22) |
+| 12 | Administration de la plateforme (6 US) | Livré (2026-08-22), validé en navigateur |
+
+Post-MVP livré par ailleurs : Circuit FR (+ page publique partageable), duplication de
+tournoi, export CSV du classement, rappel push J-1.
 
 ### Le seul point en suspens : EPIC-6
 
@@ -77,10 +82,13 @@ Expo Go **ne reçoit plus les push distantes depuis le SDK 53** — il faut un d
 
 **Mobile** : parcours d'entrée (`bienvenue`, `connexion`, `inscription`, `creer-profil`),
 4 onglets (Événements, Tournois, Équipes, Profil), fiche événement, tables d'une ronde,
-classement, liste d'armée, création de tournoi, création et fiche d'équipe.
+classement, liste d'armée, création de tournoi, création et fiche d'équipe,
+**historique du joueur** (`/historique`, poussé depuis le Profil).
 
 **Back office** : connexion, mes tournois, fiche tournoi, inscrits, check-in,
-rondes & scores, classement, listes d'armées.
+rondes & scores, classement, listes d'armées, circuits, page publique d'un circuit,
+et la **section Administration** (tableau de bord, tous les tournois, comptes, équipes)
+avec son troisième mode de barre latérale sur les routes `/admin/*`.
 
 ## 5. Décisions structurantes déjà prises (ne pas re-litiger)
 
@@ -103,6 +111,27 @@ rondes & scores, classement, listes d'armées.
    l'instant.
 9. **SDK 54 imposé** : l'App Store du porteur plafonne Expo Go à la 54.0.2. Ne pas remonter
    en SDK 57 sans son accord explicite.
+10. **Faction choisie dans une liste fermée** (2026-08-22), même remède que les régions et
+    pour la même raison : « nighthaunt » et « Nighthaunt » ne se rencontraient jamais dans
+    un regroupement. `src/lib/factions.ts` + `src/components/faction-picker.tsx`, branchés
+    sur la soumission de liste **et** sur le profil. **La liste des 28 factions reste à
+    valider par le porteur, expert AoS.**
+11. **Le pouvoir d'administration est vérifié par la base, jamais par l'interface.**
+    `is_admin()` est la seule source de vérité ; masquer une entrée de menu n'est qu'un
+    confort. Corollaire tenu partout : la lecture seule de l'admin est vraie en base — un
+    `update` admin sur le tournoi d'autrui touche zéro ligne, la politique d'écriture de la
+    0002 n'ayant jamais été touchée.
+12. **Règle d'ergonomie de l'administration : le tableau consulte, le détail agit.** Aucune
+    action destructrice dans une ligne de liste. Vaut pour l'annulation de tournoi, la
+    désactivation de compte et la dissolution d'équipe.
+13. **Aucun pourcentage sur un petit échantillon.** Sur cinq parties, un taux de victoire de
+    60 % couvre en réalité de 15 % à 95 % : il n'informe pas, il fait croire à une mesure.
+    Les statistiques joueur n'affichent que des entiers ; le taux de victoire est renvoyé à
+    l'EPIC-11 (stats méta), où l'échantillon est celui de la communauté.
+14. **Mieux vaut ne rien montrer que raconter une histoire fausse.** Appliqué trois fois :
+    un inscrit jamais pointé n'apparaît pas dans son historique ; un tournoi en cours ne
+    reçoit pas de rang ; `profiles.faction_favorite` n'est jamais substituée à la faction
+    réellement jouée.
 
 ## 6. Conventions de code
 
@@ -165,6 +194,24 @@ rondes & scores, classement, listes d'armées.
     montée en permanence, chemin de cas vide) ont été écartées une à une par des
     mesures — le rendu serveur récupéré en HTTP, le HTML fouillé — et non par
     intuition ; c'est ce qui a évité de « corriger » du code sain.
+11. **Écrire des assertions SQL, c'est aussi les écrire juste.** Quatre faux échecs coûteux
+    en une session, tous dans le test et non dans le code :
+    - dans **une même instruction**, `exists(...)` ne voit pas la ligne qu'une fonction vient
+      d'écrire — le snapshot est pris au début de l'instruction. Séparer écriture et lecture.
+    - deux lignes écrites dans **une même transaction** partagent `now()` : leur ordre
+      relatif est indéfini. Pour tester un tri chronologique, poser des dates explicites.
+    - `push_outbox` a la **RLS active sans aucune politique** : illisible depuis un rôle
+      client. La lire exige `reset role`.
+    - vérifier la longueur de ses propres chaînes de test : « trop court » fait exactement
+      10 caractères et passait donc une validation `>= 10`, annulant vraiment un tournoi.
+12. **`FOR UPDATE` est interdit sur le côté nullable d'une jointure externe** — écrire
+    `for update of t` en nommant la table qu'on verrouille réellement.
+13. **`create or replace function` refuse un changement de type de retour.** Ajouter une
+    colonne à une fonction table impose un `drop function` préalable, dans la migration.
+14. **Une colonne ajoutée à une table dont l'`UPDATE` est ouvert devient écrivable par tous.**
+    La 0001 avait accordé `UPDATE` sur `profiles` entière : la colonne `role` de la 0028
+    aurait permis à n'importe qui de se nommer administrateur. C'est le piège de la 0016,
+    revenu à l'identique. **À vérifier à chaque nouvelle colonne sensible.**
 
 ## 9. Environnement et accès
 
@@ -177,6 +224,19 @@ rondes & scores, classement, listes d'armées.
   `nabil.selmane+egide-qa@gmail.com` (TesteurQA, organisateur des tournois de test),
   `+egide-qa2/3/4`, et une douzaine de `joueur.*@test.egide.local`.
   Les mots de passe ne sont pas notés ici : les redemander ou les réinitialiser en SQL.
+- **Deux administrateurs** (2026-08-22) : `NBS` / `nbstylz@gmail.com`, compte du porteur, et
+  `TesteurQA` conservé pour les tests. Le premier admin se nomme à la main en SQL (procédure
+  en tête de la migration 0028) ; ensuite un admin en nomme d'autres via `set_admin_role`,
+  qui consigne la nomination au journal. **La fonction refuse de retirer le dernier admin.**
+- **Dépôt GitHub** : `github.com/nbstylz/egide` (public). Aucune clé n'y figure, les `.env`
+  sont ignorés. Le code des Edge Functions y est public, sans danger : les règles sont
+  appliquées par Postgres, pas par le TypeScript.
+- **Aucun navigateur pilotable sur le poste de développement** : les serveurs MCP exigent
+  Google Chrome, seul Edge est installé, et l'installer demande les droits administrateur.
+  Le parcours navigateur se fait donc **par le porteur**. Ce qui reste vérifiable sans lui :
+  assertions SQL, appels HTTP réels (`curl` + JWT obtenu par `/auth/v1/token`), et le HTML
+  rendu par le serveur Expo (`curl http://localhost:8081/<route>`) — cette dernière technique
+  a permis d'écarter plusieurs fausses pistes.
 - **Supabase exige la confirmation d'email** et son serveur d'envoi est vite saturé. Pour le
   développement : dashboard → Authentication → Sign In / Providers → Email → décocher
   « Confirm email ». Sinon, confirmer les comptes directement en SQL.
@@ -185,14 +245,40 @@ rondes & scores, classement, listes d'armées.
 
 ## 10. Prochaines étapes possibles
 
+**Trois décisions attendent le porteur — rien ne peut avancer proprement sans elles :**
+
+1. **Valider la liste des 28 factions** (`src/lib/factions.ts`). Elle suit la 4e édition,
+   groupée par Grande Alliance ; personne d'autre que le porteur ne peut garantir qu'elle
+   est juste et complète.
+2. **Arbitrer l'US-9.3** proposée par l'agent `ux-ui` : déclarer sa faction directement sur
+   la fiche d'un tournoi, sans passer par une liste d'armée. Sans elle, la section
+   « Factions jouées » restera anecdotique — le gros du trou de couverture vient des
+   tournois qui ne demandent pas de liste.
+3. **Trancher le protocole d'appariement des capitaines** avant d'ouvrir l'EPIC-7 : l'US-7.4
+   signale que l'ordre des choix et le tempo varient selon les formats.
+
+**Deux arbitrages hérités de l'EPIC-12 :** ouvrir ou non le contenu des listes d'armées à
+l'administration (aujourd'hui privé entre le joueur et son organisateur, et la page le dit),
+et livrer ou non la page « Journal » — sa place est réservée dans la navigation, tout est
+déjà en base. Un journal d'audit que personne n'ouvre ne protège personne.
+
+**Ensuite, par ordre de valeur :**
+
 1. **Finir l'EPIC-6** : development build EAS, puis vérifier la réception d'une notification.
-2. **EPIC-12 Administration** (spécifié dans `BACKLOG.md`) : rôle admin en base, supervision
-   des tournois, comptes et équipes dans le back office. Recommandé **en tête de phase 2** :
-   c'est la condition pour ouvrir l'app à des inconnus.
-3. **EPIC-7** : tournois par équipes et appariements capitaines (le gros morceau de valeur).
+   Exige `eas login` par le porteur — son mot de passe ne doit jamais transiter par l'agent.
+2. **EPIC-7** : tournois par équipes et appariements capitaines (le gros morceau de valeur),
+   une fois le point 3 ci-dessus tranché.
+3. **Paiements rail A (Stripe)** : la base est à moitié posée depuis la migration 0023
+   (`registration_payments`, `stripe_accounts`, cron `liberer-inscriptions-impayees`), mais
+   **zéro ligne côté client**. Lire `PAIEMENTS.md` avant la première ligne de code.
 4. Améliorations notées : sauvegarde locale des scores en cours de saisie (coupure réseau),
    export CSV des inscrits, formulaire de création de tournoi dans le back office,
    partage du code d'invitation par lien profond.
+
+**Limite connue à ne pas redécouvrir** : un bannissement bloque la connexion et le
+renouvellement de session, mais un jeton d'accès déjà émis reste valide jusqu'à son
+expiration (une heure). Comportement standard de Supabase ; le corriger demanderait de
+révoquer explicitement les sessions.
 
 ## 11. Documents de référence dans le dépôt
 

@@ -12,8 +12,10 @@ Ce projet tourne sur **Expo SDK 54** (voir `package.json` : `expo@^54.0.0`, `rea
 
 EGIDE est une app de tournois **Warhammer Age of Sigmar** (organisation, annuaire d'événements, équipes). Interface **en français**, public francophone. Le porteur débute en développement : avancer par petits incréments testables, expliquer les étapes.
 
+**Au début de toute session de travail sur le code, lire `RESUME_PROJET.md` avant d'agir.** C'est le document de passation : il dit où en est le projet, ce qui a déjà été tranché, et les pièges déjà payés. Le relire coûte une minute ; le sauter fait re-litiger des décisions et retomber dans des pièges documentés. Inutile pour une simple question ponctuelle.
+
 Documents de référence du dépôt, par ordre d'utilité :
-- **`RESUME_PROJET.md`** — document de passation : état d'avancement, décisions déjà tranchées, pièges rencontrés, comptes de test. À lire quand une question dépasse le fichier courant.
+- **`RESUME_PROJET.md`** — document de passation : état d'avancement, décisions déjà tranchées, pièges rencontrés, comptes de test. À lire au démarrage, et dès qu'une question dépasse le fichier courant.
 - `BACKLOG.md` — tous les EPICs et User Stories, avec notes de livraison (tenu par l'agent `product-owner`).
 - `CAHIER_DES_CHARGES.md` — périmètre et phasage d'origine.
 - `PAIEMENTS.md` — architecture des paiements (Stripe pour les inscriptions, IAP pour le premium), **à lire avant la première ligne de code de paiement**.
