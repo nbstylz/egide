@@ -59,6 +59,37 @@ export function useCircuits() {
   return { circuits, loading, error, refresh };
 }
 
+/** Un circuit par son id (lecture publique). */
+export function useCircuit(circuitId: string | undefined) {
+  const [circuit, setCircuit] = useState<Circuit | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!supabase || !circuitId) {
+      setCircuit(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(false);
+    const { data, error: dbError } = await supabase
+      .from('circuits')
+      .select('*')
+      .eq('id', circuitId)
+      .maybeSingle<Circuit>();
+    if (dbError) setError(true);
+    setCircuit((data as Circuit) ?? null);
+    setLoading(false);
+  }, [circuitId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { circuit, loading, error, refresh };
+}
+
 /** Classement de saison d'un circuit, calculé côté base par `circuit_standings`. */
 export function useCircuitStandings(circuitId: string | undefined) {
   const [standings, setStandings] = useState<CircuitStanding[]>([]);

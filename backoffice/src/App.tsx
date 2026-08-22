@@ -14,6 +14,7 @@ import { PlaceholderPage } from './pages/placeholder';
 import { TournoiDetailPage } from './pages/tournoi-detail';
 import { TournoisPage } from './pages/tournois';
 import { CircuitsPage } from './pages/circuits';
+import { CircuitPublicPage } from './pages/circuit-public';
 
 /** Liste « Mes tournois » avec son chargement de données. */
 function TournoisRoute({ userId, email, pseudo }: { userId: string; email: string; pseudo: string | null }) {
@@ -113,6 +114,8 @@ export default function App() {
   if (!session) {
     return (
       <Routes>
+        {/* Page publique d'un circuit : consultable sans compte (lien partagé). */}
+        <Route path="/circuit/:id" element={<CircuitPublicPage />} />
         <Route path="/connexion" element={<ConnexionPage />} />
         <Route path="*" element={<Navigate to="/connexion" replace />} />
       </Routes>
@@ -123,6 +126,8 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Page publique d'un circuit : même URL pour tous, sans la sidebar. */}
+      <Route path="/circuit/:id" element={<CircuitPublicPage />} />
       <Route path="/connexion" element={<Navigate to="/tournois" replace />} />
       <Route path="/" element={<Navigate to="/tournois" replace />} />
       <Route
