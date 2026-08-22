@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { Modal } from '../components/modal';
 import { StatusBadge } from '../components/status-badge';
 import { Toast } from '../components/toast';
-import type { TournamentWithCount } from '../hooks/use-my-tournaments';
+import { duplicateTournament, type TournamentWithCount } from '../hooks/use-my-tournaments';
 import { supabase } from '../lib/supabase';
 import {
   CancellableStatuses,
@@ -55,6 +55,12 @@ export function TournoiDetailPage({ tournament, loading, error, userId, onChange
   const [cancelModal, setCancelModal] = useState(false);
   const [cancelInput, setCancelInput] = useState('');
   const [cancelError, setCancelError] = useState(false);
+  const navigate = useNavigate();
+  const [dupModal, setDupModal] = useState(false);
+  const [dupName, setDupName] = useState('');
+  const [dupDate, setDupDate] = useState('');
+  const [dupBusy, setDupBusy] = useState(false);
+  const [dupError, setDupError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tournament) return;
@@ -195,6 +201,42 @@ export function TournoiDetailPage({ tournament, loading, error, userId, onChange
     }
   }
 
+  function openDuplicate() {
+    if (!tournament) return;
+    setDupName(`${tournament.name} (copie)`);
+    setDupDate('');
+    setDupError(null);
+    setDupModal(true);
+  }
+
+  async function handleDuplicate() {
+    if (!tournament) return;
+    const today = new Date().toISOString().slice(0, 10);
+    if (dupName.trim().length < 3) {
+      setDupError('Le nom doit faire au moins 3 caractères.');
+      return;
+    }
+    if (!dupDate || dupDate < today) {
+      setDupError('Choisis une date dans le futur.');
+      return;
+    }
+    setDupBusy(true);
+    setDupError(null);
+    const { data, error: dupErr } = await duplicateTournament(
+      tournament.id,
+      dupName.trim(),
+      dupDate
+    );
+    setDupBusy(false);
+    if (dupErr || !data) {
+      setDupError(dupErr ?? 'Duplication impossible.');
+      return;
+    }
+    setDupModal(false);
+    // La copie est un brouillon éditable : on ouvre directement sa fiche.
+    navigate(`/tournois/${data.id}`);
+  }
+
   const hasActiveRegistrations = tournament.registered_count > 0;
   const cancelConfirmed =
     !hasActiveRegistrations || cancelInput.trim().toUpperCase() === 'ANNULER';
@@ -218,6 +260,9 @@ export function TournoiDetailPage({ tournament, loading, error, userId, onChange
           <StatusBadge status={tournament.status} />
           <div className="page-subtitle">Dernière modification le {updatedAt}</div>
         </div>
+        <button className="btn btn-secondary" onClick={openDuplicate}>
+          Dupliquer
+        </button>
       </div>
 
       {!editable ? (
@@ -503,6 +548,46 @@ export function TournoiDetailPage({ tournament, loading, error, userId, onChange
               disabled={!cancelConfirmed || busy}
               onClick={handleCancelTournament}>
               {busy ? 'Annulation…' : 'Annuler définitivement le tournoi'}
+            </button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {dupModal ? (
+        <Modal title="Dupliquer le tournoi" onClose={() => setDupModal(false)}>
+          <p style={{ marginTop: 0 }}>
+            Une copie des paramètres (format, capacité, lieu…) sera créée en{' '}
+            <strong>brouillon</strong>, sans les inscrits ni les résultats. Ajustez le nom et
+            choisissez la nouvelle date.
+          </p>
+          <div className="field">
+            <label htmlFor="dup-name">Nom</label>
+            <input
+              id="dup-name"
+              className="input"
+              value={dupName}
+              maxLength={80}
+              onChange={(event) => setDupName(event.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="dup-date">Nouvelle date</label>
+            <input
+              id="dup-date"
+              type="date"
+              className="input"
+              value={dupDate}
+              onChange={(event) => setDupDate(event.target.value)}
+            />
+          </div>
+          {dupError ? <div className="banner banner-danger">{dupError}</div> : null}
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setDupModal(false)}>
+              Annuler
+            </button>
+            <button className="btn btn-primary" disabled={dupBusy} onClick={handleDuplicate}>
+              {dupBusy ? 'Duplication…' : 'Créer la copie'}
             </button>
           </div>
         </Modal>

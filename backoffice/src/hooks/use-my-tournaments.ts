@@ -93,3 +93,22 @@ export function useTournament(tournamentId: string | undefined) {
 
   return { tournament, loading, error, refresh };
 }
+
+/**
+ * Duplique un tournoi : copie ses paramètres (sans les inscrits) dans un
+ * nouveau brouillon, via la fonction `duplicate_tournament`. Renvoie le
+ * tournoi créé, ou un message d'erreur.
+ */
+export async function duplicateTournament(
+  tournamentId: string,
+  name: string,
+  eventDate: string
+) {
+  if (!supabase) return { data: null, error: 'Supabase non configuré.' };
+  const { data, error } = await supabase.rpc('duplicate_tournament', {
+    p_tournament_id: tournamentId,
+    p_name: name,
+    p_event_date: eventDate,
+  });
+  return { data: (data as Tournament) ?? null, error: error?.message ?? null };
+}
