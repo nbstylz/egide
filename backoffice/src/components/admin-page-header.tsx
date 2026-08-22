@@ -65,13 +65,18 @@ export function AdminReadOnlyBanner({
   organizerPseudo,
   tournamentId,
   isOwner,
+  cancelled,
 }: {
   organizerPseudo?: string | null;
   tournamentId?: string;
   isOwner?: boolean;
+  /** Tournoi annulé : le liseré passe au rouge, l'état saute aux yeux. */
+  cancelled?: boolean;
 }) {
   return (
-    <div className="banner banner-info" style={{ marginBottom: 'var(--sp-4)' }}>
+    <div
+      className={`banner banner-info${cancelled ? ' banner-info-danger' : ''}`}
+      style={{ marginBottom: 'var(--sp-4)' }}>
       <strong>
         Lecture seule{organizerPseudo ? ` — tournoi de ${organizerPseudo}` : ''}.
       </strong>{' '}

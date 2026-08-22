@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { AdminCancelTournament } from '../components/admin-cancel-tournament';
 import { AdminReadOnlyBanner } from '../components/admin-page-header';
 import { Modal } from '../components/modal';
 import { StatusBadge } from '../components/status-badge';
@@ -280,6 +281,7 @@ export function TournoiDetailPage({
           organizerPseudo={organizerPseudo}
           tournamentId={tournament.id}
           isOwner={tournament.organizer_id === userId}
+          cancelled={tournament.status === 'cancelled'}
         />
       ) : null}
 
@@ -520,6 +522,17 @@ export function TournoiDetailPage({
           </div>
         </div>
       )}
+
+      {/* En supervision, la zone de danger change de nature : ce n'est plus
+          l'organisateur qui renonce, c'est l'administration qui protège les
+          inscrits. Motif obligatoire et action consignée. */}
+      {readOnly ? (
+        <AdminCancelTournament
+          tournament={tournament}
+          onCancelled={onChanged}
+          onToast={setToast}
+        />
+      ) : null}
 
       {cancellable ? (
         <div className="danger-zone">

@@ -221,6 +221,50 @@ async function compose(
     }));
   }
 
+  if (kind === 'tournament_cancelled') {
+    const { data: t } = await admin
+      .from('tournaments')
+      .select('id, name, city, event_date, organizer_id')
+      .eq('id', payload.tournament_id)
+      .maybeSingle();
+    if (!t) return [];
+
+    // Le motif vient de la file : `tournaments` ne le stocke pas, et le
+    // journal d'audit n'est pas fait pour être relu à chaque envoi.
+    const reason = (payload.reason ?? '').trim();
+    // Une notification tronquée par le système ne dit plus rien : on garde
+    // le motif court, le détail reste dans l'app.
+    const short = reason.length > 90 ? `${reason.slice(0, 89)}…` : reason;
+    const url = `/evenements/${t.id}`;
+
+    // Toute inscription encore vivante compte, liste d'attente comprise :
+    // une place espérée qui disparaît est aussi une nouvelle à annoncer.
+    const { data: regs } = await admin
+      .from('registrations')
+      .select('player_id')
+      .eq('tournament_id', payload.tournament_id)
+      .in('status', ['registered', 'checked_in', 'waitlisted']);
+
+    const messages: Message[] = [];
+    // L'organisateur d'abord : c'est son événement qu'on retire.
+    messages.push({
+      profile_id: t.organizer_id,
+      title: t.name,
+      body: `Ton tournoi a été annulé par l’administration d’EGIDE. Motif : ${short}`,
+      data: { url },
+    });
+    for (const r of (regs ?? []) as { player_id: string }[]) {
+      if (r.player_id === t.organizer_id) continue;
+      messages.push({
+        profile_id: r.player_id,
+        title: t.name,
+        body: `Ce tournoi du ${frDate(t.event_date)} à ${t.city} a été annulé. Motif : ${short}`,
+        data: { url },
+      });
+    }
+    return messages;
+  }
+
   return [];
 }
 

@@ -34,6 +34,52 @@ export function useIsAdmin(userId: string | undefined) {
   return isAdmin;
 }
 
+/**
+ * Annule un tournoi au nom de l'administration. Renvoie le message d'erreur
+ * de la base tel quel : ses refus sont rédigés en français et destinés à
+ * être lus (motif trop court, tournoi terminé, déjà annulé).
+ */
+export async function adminCancelTournament(tournamentId: string, reason: string) {
+  if (!supabase) return { ok: false, message: 'Supabase non configuré.' };
+  const { error } = await supabase.rpc('admin_cancel_tournament', {
+    p_tournament_id: tournamentId,
+    p_reason: reason,
+  });
+  return error ? { ok: false, message: error.message } : { ok: true, message: '' };
+}
+
+export type AdminCancellation = {
+  reason: string;
+  created_at: string;
+  admin_pseudo: string | null;
+};
+
+/**
+ * Motif de l'annulation administrative d'un tournoi. Un statut « Annulé » nu
+ * ne dit pas pourquoi : c'est le premier usage visible du journal d'audit.
+ */
+export function useAdminCancellation(tournamentId: string | undefined, enabled: boolean) {
+  const [cancellation, setCancellation] = useState<AdminCancellation | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!supabase || !tournamentId || !enabled) {
+      setCancellation(null);
+      return;
+    }
+    const { data } = await supabase.rpc('admin_cancellation', {
+      p_tournament_id: tournamentId,
+    });
+    const rows = (data as AdminCancellation[]) ?? [];
+    setCancellation(rows[0] ?? null);
+  }, [tournamentId, enabled]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { cancellation, refresh };
+}
+
 export type AdminTournament = {
   id: string;
   name: string;

@@ -2106,3 +2106,28 @@ a {
     display: inline;
   }
 }
+
+/* Explication qui remplace le bouton quand l'annulation n'est pas possible :
+   une absence expliquée ne pose pas de question, un bouton grisé si. */
+.danger-zone-note {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+/* Case à cocher de confirmation renforcée (tournoi en cours de jeu). */
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.checkbox-row input {
+  margin-top: 3px;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--danger);
+}

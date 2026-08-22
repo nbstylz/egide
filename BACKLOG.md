@@ -593,7 +593,13 @@ npm --prefix backoffice run dev
   3. Un clic ouvre la fiche de gestion existante **en lecture seule** : l'admin observe, il n'opère pas le tournoi à la place de l'organisateur.
 - **Taille : M** — **Dépendances :** US-12.1.
 
-### US-12.3 — Annulation d'un tournoi par l'admin
+### US-12.3 — Annulation d'un tournoi par l'admin — ✅ Livrée (2026-08-22)
+> Migration 0031 : `admin_cancel_tournament()` (motif d'au moins 10 caractères, statut `cancelled` — jamais de suppression, action consignée dans `admin_actions`) et `admin_cancellation()` qui rend le motif, la date et l'auteur de la dernière annulation administrative. Un statut « Annulé » nu ne dit pas pourquoi : c'est le premier usage visible du journal d'audit.
+> **Refus explicites** : tournoi terminé (son classement fait foi pour ceux qui l'ont disputé), tournoi déjà annulé (sinon on notifie deux fois les mêmes inscrits), tournoi introuvable, motif absent ou trop court.
+> Notification (critère 4) : nouveau `kind` `tournament_cancelled` dans `push_outbox`, **le motif voyage dans le payload** (`tournaments` ne le stocke pas, et le journal n'est pas fait pour être relu à chaque envoi). `send-push` **v5** compose un message pour l'organisateur d'abord — c'est son événement qu'on retire — puis pour chaque inscrit, **liste d'attente comprise** : une place espérée qui disparaît est aussi une nouvelle à annoncer.
+> UI : zone de danger en bas de la fiche d'administration, jamais dans le tableau (300 lignes de 52 px et une action irréversible : l'accident est certain). Bouton `btn-danger-outline`, jamais plein. Quand l'annulation est impossible, le bloc reste et **explique** au lieu de griser un bouton. Modale : motif obligatoire avec erreur au blur, case de confirmation supplémentaire **uniquement** pour un tournoi en cours (une friction, pas deux : empiler les obstacles produit un automatisme), « Conserver le tournoi » en premier dans le DOM pour qu'une frappe réflexe sur Entrée ne détruise rien.
+> **20 assertions SQL** passées. Deux tests étaient faux avant le code : « trop court » fait exactement 10 caractères (donc valide), et `push_outbox` a la RLS active sans aucune politique — la file ne se lit qu'en dehors de tout rôle client.
+> **Chaîne prouvée de bout en bout en HTTP réel** : refus du motif court retourné en français au client, annulation (204), vidage de la file par `send-push` v5, et **jeton d'appareil purgé par Expo** — preuve que les messages ont bien été composés et envoyés. Jeu d'essai retiré de la base ensuite.
 **En tant qu'** admin, **je veux** annuler un tournoi manifestement problématique (faux événement, organisateur injoignable), **afin de** protéger les joueurs inscrits.
 - Critères :
   1. Action « Annuler ce tournoi » depuis la vue US-12.2, avec confirmation qui énonce la conséquence et un motif obligatoire.
