@@ -21,10 +21,10 @@ const TournamentSections = [
  * pas à bouger. Aucun item mort : chacun mène quelque part.
  */
 const AdminSections = [
-  { path: '', label: 'Tableau de bord', soon: true },
+  { path: '', label: 'Tableau de bord', soon: false },
   { path: 'tournois', label: 'Tournois', soon: false },
   { path: 'comptes', label: 'Comptes', soon: false },
-  { path: 'equipes', label: 'Équipes', soon: true },
+  { path: 'equipes', label: 'Équipes', soon: false },
   { path: 'journal', label: 'Journal', soon: true },
 ];
 

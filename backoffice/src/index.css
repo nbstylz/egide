@@ -2148,3 +2148,24 @@ a {
   padding-left: var(--sp-3);
   border-left: 2px solid var(--surface-active);
 }
+
+/* Précision sous un chiffre du tableau de bord (« dont 3 sur 30 jours »). */
+.stat-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: var(--sp-1);
+}
+
+/* Un chiffre qui mène à sa liste : évite de chercher où regarder ensuite. */
+.stat-card-link {
+  color: var(--text);
+  text-decoration: none;
+  display: block;
+  /* Bordure transparente dès le repos : sans elle, la survol ferait sauter
+     la carte d'un pixel. */
+  border: 1px solid transparent;
+}
+
+.stat-card-link:hover {
+  border-color: var(--accent);
+}

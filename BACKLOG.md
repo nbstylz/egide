@@ -556,7 +556,15 @@ Lancer le back office :
 npm --prefix backoffice run dev
 ```
 
-## EPIC-12 — Administration de la plateforme (Phase 2)
+## EPIC-12 — Administration de la plateforme (Phase 2) — ✅ Livré (2026-08-22)
+
+> **Les six US sont livrées** (migrations 0028 à 0034, Edge Function `admin-account`, `send-push` v5).
+> Reste à faire avant de considérer l'EPIC clos pour de bon :
+> 1. **Le parcours navigateur n'a jamais été fait** — aucun navigateur pilotable sur le poste de développement (Chrome absent, droits administrateur requis). Toute la couche données est vérifiée par assertions SQL et par des appels HTTP réels, mais personne n'a encore cliqué dans les écrans.
+> 2. **Nommer le vrai compte admin.** `TesteurQA` a été promu pour le développement ; avant ouverture, basculer sur le compte du porteur (procédure documentée en tête de la migration 0028).
+> 3. **Deux arbitrages en attente du PO** : ouvrir ou non le contenu des listes d'armées à l'administration (aujourd'hui privé entre le joueur et son organisateur), et livrer ou non la page « Journal » proposée par l'agent `ux-ui` — sa place est réservée dans la navigation, tout est déjà en base.
+> 4. **Limite connue de la désactivation** : un bannissement bloque la connexion et le renouvellement de session, mais un jeton d'accès déjà émis reste valide jusqu'à son expiration (une heure). Comportement standard de Supabase ; le corriger demanderait de révoquer explicitement les sessions.
+
 
 **Objectif :** donner au porteur du projet un rôle admin vérifié en base et une section d'administration dans le back office : supervision de tous les tournois, comptes et équipes, avec des actions d'urgence tracées et des garde-fous explicites.
 **Valeur utilisateur :** dès que l'app est utilisée par de vrais joueurs, quelqu'un doit pouvoir intervenir (tournoi fantôme, nom d'équipe offensant, compte problématique) sans toucher au SQL à la main — condition de confiance pour ouvrir l'app au-delà du cercle de test.
@@ -624,7 +632,15 @@ npm --prefix backoffice run dev
   4. Aucune donnée du compte n'est supprimée : tournois, résultats et équipes restent intacts.
 - **Taille : L** — **Dépendances :** US-12.1.
 
-### US-12.5 — Gestion des équipes : renommer, dissoudre
+### US-12.5 — Gestion des équipes : renommer, dissoudre — ✅ Livrée (2026-08-22)
+> Migration 0033 : `admin_teams()`, `admin_rename_team()`, `admin_disband_team()`, `admin_team_history()`.
+> **Divergence assumée avec le critère 3.** Le backlog demandait d'« étendre `disband_team` aux admins ». On ne l'a pas fait : `disband_team` n'exige aucun motif, l'ouvrir aux admins aurait créé un chemin de dissolution **non tracé** — précisément ce que la fin du même critère interdit. `disband_team` reste donc au capitaine, et l'administration passe par sa propre porte, qui exige un motif. Vérifié par assertion : un capitaine ne peut toujours pas dissoudre l'équipe d'un autre.
+> `admin_disband_team` **consigne avant de supprimer** : après le `delete`, le nom, le capitaine et l'effectif n'existent plus, et un journal qui ne dit pas ce qui a disparu ne sert à rien. Le renommage garde l'ancien et le nouveau nom dans son `detail`.
+> Message d'erreur rédigé pour un nom déjà pris : le message brut de Postgres parlerait d'un index, illisible pour qui vient de taper un nom.
+> UI : page `/admin/equipes`, recherche équipe/capitaine, filtre par région, panneau latéral à trois états (consultation → renommer → dissoudre). Confirmation renforcée (case à cocher) pour la seule action irréversible, bouton « Retour » en premier dans le DOM.
+> **Bug réel trouvé par les assertions** : `FOR UPDATE` est interdit sur le côté nullable d'une jointure externe — corrigé en `for update of t`, la table des équipes étant celle qu'on verrouille.
+> 18 assertions SQL passées, plus un cycle complet en HTTP réel (annuaire, renommage avec accent, dissolution, journal). Jeu d'essai retiré ensuite.
+
 **En tant qu'** admin, **je veux** renommer une équipe au nom offensant ou dissoudre une équipe abandonnée, **afin de** garder l'annuaire des équipes sain.
 - Critères :
   1. Page « Équipes » : toutes les équipes (nom, capitaine, membres, région), recherche par nom.
@@ -632,7 +648,11 @@ npm --prefix backoffice run dev
   3. Dissolution avec confirmation renforcée, via la fonction `disband_team` existante étendue aux admins, tracée. **Attention EPIC-7 :** quand les tournois par équipes existeront, la dissolution devra préserver l'historique — à re-trancher à ce moment-là.
 - **Taille : S** — **Dépendances :** US-12.1.
 
-### US-12.6 — Tableau de bord : statistiques globales
+### US-12.6 — Tableau de bord : statistiques globales — ✅ Livrée (2026-08-22)
+> Migration 0034 : `admin_dashboard()` (une seule ligne — les compteurs par statut se lisent d'un `filter` en base, alors que côté client il faudrait rapatrier tous les tournois pour les compter) et `admin_recent_actions()`.
+> « Publié » et non « créé » pour l'activité à 30 jours : un brouillon n'existe pour personne.
+> UI : page d'accueil de l'administration (`/admin`), deux groupes de chiffres (Communauté, Tournois), les cinq dernières mesures d'administration, et **chaque chiffre principal mène à sa liste** — un nombre sans porte de sortie oblige à chercher où regarder ensuite. Aucun graphique, conformément au critère 3.
+> 10 assertions SQL passées, dont une de cohérence : la somme des cinq statuts égale le total des tournois. Contrat vérifié en HTTP réel.
 **En tant qu'** admin, **je veux** voir les chiffres clés de la plateforme, **afin de** suivre si EGIDE prend dans la communauté.
 - Critères :
   1. Page d'accueil de la section Administration : nombre de comptes, de tournois (par statut), d'inscriptions, d'équipes — calculés par une fonction SQL réservée aux admins.

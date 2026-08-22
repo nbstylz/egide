@@ -80,6 +80,148 @@ export function useAdminCancellation(tournamentId: string | undefined, enabled: 
   return { cancellation, refresh };
 }
 
+export type AdminTeam = {
+  id: string;
+  name: string;
+  region: string | null;
+  description: string | null;
+  captain_id: string;
+  captain_pseudo: string | null;
+  member_count: number;
+  created_at: string;
+};
+
+/** L'annuaire complet des équipes, capitaine et effectif compris. */
+export function useAdminTeams() {
+  const [teams, setTeams] = useState<AdminTeam[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!supabase) {
+      setTeams([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(false);
+    const { data, error: dbError } = await supabase.rpc('admin_teams', { p_limit: 200 });
+    if (dbError) setError(true);
+    else setTeams((data as AdminTeam[]) ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { teams, loading, error, refresh };
+}
+
+export type AdminTeamEvent = {
+  action: string;
+  reason: string | null;
+  created_at: string;
+  admin_pseudo: string | null;
+  detail: Record<string, unknown> | null;
+};
+
+export function useTeamHistory(teamId: string | undefined) {
+  const [history, setHistory] = useState<AdminTeamEvent[]>([]);
+
+  const refresh = useCallback(async () => {
+    if (!supabase || !teamId) {
+      setHistory([]);
+      return;
+    }
+    const { data } = await supabase.rpc('admin_team_history', { p_team_id: teamId });
+    setHistory((data as AdminTeamEvent[]) ?? []);
+  }, [teamId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { history, refresh };
+}
+
+/** Renomme une équipe. Les refus de la base sont rédigés pour être affichés. */
+export async function renameTeam(teamId: string, name: string, reason: string) {
+  if (!supabase) return { ok: false, message: 'Supabase non configuré.' };
+  const { error } = await supabase.rpc('admin_rename_team', {
+    p_team_id: teamId,
+    p_name: name,
+    p_reason: reason,
+  });
+  return error ? { ok: false, message: error.message } : { ok: true, message: '' };
+}
+
+/** Dissout une équipe. Le journal garde son nom et son effectif disparus. */
+export async function disbandTeam(teamId: string, reason: string) {
+  if (!supabase) return { ok: false, message: 'Supabase non configuré.' };
+  const { error } = await supabase.rpc('admin_disband_team', {
+    p_team_id: teamId,
+    p_reason: reason,
+  });
+  return error ? { ok: false, message: error.message } : { ok: true, message: '' };
+}
+
+export type AdminDashboard = {
+  accounts_total: number;
+  accounts_30d: number;
+  tournaments_total: number;
+  tournaments_draft: number;
+  tournaments_open: number;
+  tournaments_in_progress: number;
+  tournaments_completed: number;
+  tournaments_cancelled: number;
+  tournaments_published_30d: number;
+  registrations_total: number;
+  registrations_active: number;
+  teams_total: number;
+  admin_actions_total: number;
+};
+
+export type AdminRecentAction = {
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  reason: string | null;
+  created_at: string;
+  admin_pseudo: string | null;
+};
+
+/** Chiffres clés de la plateforme et dernières mesures prises. */
+export function useAdminDashboard() {
+  const [stats, setStats] = useState<AdminDashboard | null>(null);
+  const [recent, setRecent] = useState<AdminRecentAction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(false);
+    const [statsResult, recentResult] = await Promise.all([
+      supabase.rpc('admin_dashboard'),
+      supabase.rpc('admin_recent_actions', { p_limit: 5 }),
+    ]);
+    if (statsResult.error) setError(true);
+    else setStats(((statsResult.data as AdminDashboard[]) ?? [])[0] ?? null);
+    setRecent((recentResult.data as AdminRecentAction[]) ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { stats, recent, loading, error, refresh };
+}
+
 export type AdminAccount = {
   id: string;
   pseudo: string;

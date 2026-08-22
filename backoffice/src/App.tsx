@@ -7,6 +7,8 @@ import { useMyTournaments, useTournament } from './hooks/use-my-tournaments';
 import { useSession } from './hooks/use-session';
 import { isSupabaseConfigured } from './lib/supabase';
 import { AdminComptesPage } from './pages/admin-comptes';
+import { AdminEquipesPage } from './pages/admin-equipes';
+import { AdminTableauDeBordPage } from './pages/admin-tableau-de-bord';
 import { AdminTournoisPage } from './pages/admin-tournois';
 import { ConnexionPage } from './pages/connexion';
 import { CheckInPage } from './pages/check-in';
@@ -227,7 +229,26 @@ export default function App() {
           Chemins distincts de /tournois/:id : un lien copié-collé ne doit pas
           changer de comportement selon qui clique dessus, et la sidebar doit
           pouvoir décider de son mode à partir de l'URL seule. */}
-      <Route path="/admin" element={<Navigate to="/admin/tournois" replace />} />
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute shell={shell}>
+            <Layout email={shell.email} pseudo={shell.pseudo} isAdmin admin>
+              <AdminTableauDeBordPage />
+            </Layout>
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/equipes"
+        element={
+          <AdminRoute shell={shell}>
+            <Layout email={shell.email} pseudo={shell.pseudo} isAdmin admin>
+              <AdminEquipesPage />
+            </Layout>
+          </AdminRoute>
+        }
+      />
       <Route
         path="/admin/tournois"
         element={
@@ -263,7 +284,7 @@ export default function App() {
           </AdminRoute>
         }
       />
-      {['equipes', 'journal'].map((section) => (
+      {['journal'].map((section) => (
         <Route
           key={section}
           path={`/admin/${section}`}
