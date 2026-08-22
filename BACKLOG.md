@@ -559,11 +559,11 @@ npm --prefix backoffice run dev
 ## EPIC-12 — Administration de la plateforme (Phase 2) — ✅ Livré (2026-08-22)
 
 > **Les six US sont livrées** (migrations 0028 à 0034, Edge Function `admin-account`, `send-push` v5).
-> Reste à faire avant de considérer l'EPIC clos pour de bon :
-> 1. **Le parcours navigateur n'a jamais été fait** — aucun navigateur pilotable sur le poste de développement (Chrome absent, droits administrateur requis). Toute la couche données est vérifiée par assertions SQL et par des appels HTTP réels, mais personne n'a encore cliqué dans les écrans.
-> 2. **Nommer le vrai compte admin.** `TesteurQA` a été promu pour le développement ; avant ouverture, basculer sur le compte du porteur (procédure documentée en tête de la migration 0028).
-> 3. **Deux arbitrages en attente du PO** : ouvrir ou non le contenu des listes d'armées à l'administration (aujourd'hui privé entre le joueur et son organisateur), et livrer ou non la page « Journal » proposée par l'agent `ux-ui` — sa place est réservée dans la navigation, tout est déjà en base.
-> 4. **Limite connue de la désactivation** : un bannissement bloque la connexion et le renouvellement de session, mais un jeton d'accès déjà émis reste valide jusqu'à son expiration (une heure). Comportement standard de Supabase ; le corriger demanderait de révoquer explicitement les sessions.
+> **Parcours navigateur validé par le porteur le 2026-08-22**, depuis son propre compte admin : entrée « Administration » visible, tableau de bord, liste de tous les tournois, **rafraîchissement F5 sur `/admin/tournois` sans éjection** (le piège n° 1 signalé par l'agent `ux-ui`), **fiche en lecture seule sans aucun bouton d'action** dans Inscrits / Check-in / Rondes / Classement, et refus de l'auto-désactivation dans le panneau Comptes.
+> **Deux administrateurs en place** : `NBS` (`nbstylz@gmail.com`, compte du porteur, nommé via `set_admin_role` — la nomination figure au journal d'audit) et `TesteurQA`, conservé pour les tests.
+> Reste ouvert :
+> 1. **Deux arbitrages en attente du PO** : ouvrir ou non le contenu des listes d'armées à l'administration (aujourd'hui privé entre le joueur et son organisateur), et livrer ou non la page « Journal » proposée par l'agent `ux-ui` — sa place est réservée dans la navigation, tout est déjà en base.
+> 2. **Limite connue de la désactivation** : un bannissement bloque la connexion et le renouvellement de session, mais un jeton d'accès déjà émis reste valide jusqu'à son expiration (une heure). Comportement standard de Supabase ; le corriger demanderait de révoquer explicitement les sessions.
 
 
 **Objectif :** donner au porteur du projet un rôle admin vérifié en base et une section d'administration dans le back office : supervision de tous les tournois, comptes et équipes, avec des actions d'urgence tracées et des garde-fous explicites.
@@ -586,14 +586,14 @@ npm --prefix backoffice run dev
   5. Test SQL : un utilisateur normal qui tente `update profiles set role = 'admin'` est refusé.
 - **Taille : M** — **Dépendances :** aucune.
 
-### US-12.2 — Section « Administration » : tous les tournois — 🔶 Codée (2026-08-22), test navigateur en attente
+### US-12.2 — Section « Administration » : tous les tournois — ✅ Livrée (2026-08-22)
 > Conception validée par l'agent `ux-ui` avant écriture. Décisions structurantes : l'administration est un **troisième mode de sidebar** (comme le mode tournoi), sur des **routes `/admin/*` distinctes** — un lien copié-collé ne doit pas changer de sens selon qui clique dessus.
 > Base : migration 0029 (politique de lecture « un admin voit tous les tournois », **additionnelle** — la règle publique de la 0002 reste lisible telle quelle) et 0030 (`admin_tournaments()`, qui descend le comptage des inscrits et la jointure organisateur dans la base : les embarquer dans la requête tirerait des milliers de lignes pour n'afficher que des nombres).
 > Front : `pages/admin-tournois.tsx`, `hooks/use-admin.ts`, `components/admin-page-header.tsx` (coquille commune + refus d'accès + bandeau lecture seule), troisième mode dans `layout.tsx`, routes et garde dans `App.tsx`, styles `.content-inner--wide` / `.badge-admin` / `.admin-toolbar`.
 > Recherche (nom, ville, région, organisateur — insensible aux accents) et filtre de statut cumulatifs, tri clavier-accessible (`<th aria-sort><button>`, défaut de date décroissante), pagination « Afficher 50 de plus », quatre états vides distincts, avertissement explicite si la limite de 300 est atteinte.
 > **La lecture seule est vraie en base, pas seulement à l'écran** : la politique d'écriture de la 0002 n'a pas été touchée, un `update` admin sur le tournoi d'autrui touche zéro ligne (assertion 8 de la 0029). L'interface retire les actions plutôt que de les griser.
 > **Écueil trouvé** : la RLS de la 0018 réserve le contenu d'une liste d'armées au joueur et à son organisateur. En vue admin la page aurait affiché tout le monde en « liste manquante » — un mensonge. La RLS n'a pas été élargie (le contenu reste privé) et la page le dit explicitement. **À trancher par le PO** : faut-il ouvrir les listes à l'administration ?
-> 15 assertions SQL passées (8 sur la 0029, 7 sur la 0030). `tsc -b`, `vite build` et `oxlint` propres. **Reste : le parcours navigateur** — aucun navigateur pilotable sur ce poste (Chrome absent, droits admin requis).
+> 15 assertions SQL passées (8 sur la 0029, 7 sur la 0030). `tsc -b`, `vite build` et `oxlint` propres. **Parcours navigateur validé par le porteur** : entrée conditionnelle visible, liste complète, rafraîchissement F5 sans éjection, fiche en lecture seule sans aucun bouton d'action.
 **En tant qu'** admin, **je veux** voir tous les tournois de la plateforme, tous statuts et tous organisateurs confondus, **afin de** superviser l'activité et repérer les anomalies.
 - Critères :
   1. Une entrée « Administration » apparaît dans la sidebar du back office **uniquement** si `is_admin()` répond vrai ; un non-admin qui force l'URL est renvoyé (et la RLS ne lui renvoie de toute façon que ses propres données).
