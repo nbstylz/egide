@@ -199,6 +199,28 @@ async function compose(
     }));
   }
 
+  if (kind === 'tournament_reminder') {
+    const { data: t } = await admin
+      .from('tournaments')
+      .select('id, name, city, event_date')
+      .eq('id', payload.tournament_id)
+      .maybeSingle();
+    if (!t) return [];
+    // Un rappel par joueur encore inscrit (le check-in a lieu le jour J).
+    const { data: regs } = await admin
+      .from('registrations')
+      .select('player_id')
+      .eq('tournament_id', payload.tournament_id)
+      .in('status', ['registered', 'checked_in']);
+    const url = `/evenements/${t.id}`;
+    return (regs ?? []).map((r: { player_id: string }) => ({
+      profile_id: r.player_id,
+      title: t.name,
+      body: `C’est demain ! Rendez-vous à ${t.city}, le ${frDate(t.event_date)}.`,
+      data: { url },
+    }));
+  }
+
   return [];
 }
 
