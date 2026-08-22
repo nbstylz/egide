@@ -6,6 +6,7 @@ import { useIsAdmin } from './hooks/use-admin';
 import { useMyTournaments, useTournament } from './hooks/use-my-tournaments';
 import { useSession } from './hooks/use-session';
 import { isSupabaseConfigured } from './lib/supabase';
+import { AdminComptesPage } from './pages/admin-comptes';
 import { AdminTournoisPage } from './pages/admin-tournois';
 import { ConnexionPage } from './pages/connexion';
 import { CheckInPage } from './pages/check-in';
@@ -252,7 +253,17 @@ export default function App() {
           }
         />
       ))}
-      {['comptes', 'equipes', 'journal'].map((section) => (
+      <Route
+        path="/admin/comptes"
+        element={
+          <AdminRoute shell={shell}>
+            <Layout email={shell.email} pseudo={shell.pseudo} isAdmin admin>
+              <AdminComptesPage userId={shell.userId} />
+            </Layout>
+          </AdminRoute>
+        }
+      />
+      {['equipes', 'journal'].map((section) => (
         <Route
           key={section}
           path={`/admin/${section}`}

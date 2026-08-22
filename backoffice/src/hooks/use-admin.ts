@@ -80,6 +80,118 @@ export function useAdminCancellation(tournamentId: string | undefined, enabled: 
   return { cancellation, refresh };
 }
 
+export type AdminAccount = {
+  id: string;
+  pseudo: string;
+  region: string | null;
+  role: 'user' | 'admin';
+  email: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  /** Non nul = compte désactivé. Source de vérité : `auth.users`. */
+  banned_until: string | null;
+  tournaments_organized: number;
+  registrations_count: number;
+};
+
+export const AdminAccountsLimit = 200;
+
+/** L'annuaire des comptes, e-mail compris (invisible hors administration). */
+export function useAdminAccounts() {
+  const [accounts, setAccounts] = useState<AdminAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!supabase) {
+      setAccounts([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(false);
+    const { data, error: dbError } = await supabase.rpc('admin_accounts', {
+      p_limit: AdminAccountsLimit,
+    });
+    if (dbError) setError(true);
+    else setAccounts((data as AdminAccount[]) ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return {
+    accounts,
+    loading,
+    error,
+    refresh,
+    truncated: accounts.length >= AdminAccountsLimit,
+  };
+}
+
+export type AdminAccountEvent = {
+  action: string;
+  reason: string | null;
+  created_at: string;
+  admin_pseudo: string | null;
+};
+
+/** Les mesures déjà prises sur un compte : sans elles, un compte réactivé
+ *  ne garderait aucune trace visible de ce qui lui est arrivé. */
+export function useAccountHistory(profileId: string | undefined) {
+  const [history, setHistory] = useState<AdminAccountEvent[]>([]);
+
+  const refresh = useCallback(async () => {
+    if (!supabase || !profileId) {
+      setHistory([]);
+      return;
+    }
+    const { data } = await supabase.rpc('admin_account_history', {
+      p_profile_id: profileId,
+    });
+    setHistory((data as AdminAccountEvent[]) ?? []);
+  }, [profileId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { history, refresh };
+}
+
+/**
+ * Désactive ou réactive un compte. Passe par l'Edge Function `admin-account`
+ * parce que le bannissement relève de Supabase Auth et exige la clé service —
+ * qui ne doit jamais atteindre le navigateur.
+ */
+export async function setAccountDisabled(
+  profileId: string,
+  disabled: boolean,
+  reason: string
+): Promise<{ ok: boolean; message: string; logged?: boolean }> {
+  if (!supabase) return { ok: false, message: 'Supabase non configuré.' };
+  const { data, error } = await supabase.functions.invoke('admin-account', {
+    body: { profile_id: profileId, disabled, reason },
+  });
+  if (error) {
+    // Les refus de la base sont rédigés pour être lus : on les récupère dans
+    // le corps de la réponse plutôt que d'afficher « Edge Function error ».
+    let message = error.message;
+    try {
+      const body = await (error as { context?: { json?: () => Promise<{ error?: string }> } })
+        .context?.json?.();
+      if (body?.error) message = body.error;
+    } catch {
+      // Le corps n'était pas du JSON : on garde le message générique.
+    }
+    return { ok: false, message };
+  }
+  const result = data as { logged?: boolean };
+  return { ok: true, message: '', logged: result?.logged !== false };
+}
+
 export type AdminTournament = {
   id: string;
   name: string;

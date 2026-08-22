@@ -23,7 +23,7 @@ const TournamentSections = [
 const AdminSections = [
   { path: '', label: 'Tableau de bord', soon: true },
   { path: 'tournois', label: 'Tournois', soon: false },
-  { path: 'comptes', label: 'Comptes', soon: true },
+  { path: 'comptes', label: 'Comptes', soon: false },
   { path: 'equipes', label: 'Équipes', soon: true },
   { path: 'journal', label: 'Journal', soon: true },
 ];

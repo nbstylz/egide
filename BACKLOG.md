@@ -608,7 +608,14 @@ npm --prefix backoffice run dev
   4. Les inscrits reçoivent la notification d'annulation via la file `push_outbox` (EPIC-6 livré).
 - **Taille : S** — **Dépendances :** US-12.2.
 
-### US-12.4 — Annuaire des comptes : recherche et désactivation
+### US-12.4 — Annuaire des comptes : recherche et désactivation — ✅ Livrée (2026-08-22)
+> Migration 0032 : `admin_accounts()` (l'e-mail vit dans `auth.users`, qu'aucun client ne peut lire — d'où le `security definer`), `admin_assert_can_disable()`, `admin_log_account_ban()` et `admin_account_history()`.
+> **Décision structurante : pas de colonne miroir.** L'état « désactivé » est `auth.users.banned_until`, que seul GoTrue écrit. Une copie dans `profiles` aurait fini par diverger de la vérité.
+> Edge Function **`admin-account`** (nouvelle) : le bannissement relève de l'API admin de Supabase Auth et exige la clé service, qui ne doit jamais atteindre un navigateur. **Elle ne décide rien** — elle interroge `admin_assert_can_disable()` en agissant *au nom de l'appelant* (client anon + JWT de l'admin, pour que `auth.uid()` réponde), puis exécute. Contourner l'interface ne contourne donc aucune règle. Déroulé : autoriser (base) → bannir (Auth) → consigner (base), dans cet ordre pour qu'un échec du bannissement ne laisse jamais une trace mensongère au journal.
+> Garde-fous (critère 3) : ni soi-même, ni un autre administrateur — il faut d'abord lui retirer son rôle via `set_admin_role`, geste distinct et tracé lui aussi.
+> UI : page `/admin/comptes` sur la coquille admin commune, recherche pseudo/e-mail insensible aux accents, filtres Tous / Actifs / Désactivés / Administrateurs, et **l'action dans un panneau latéral, jamais dans le tableau** (le tableau consulte, le détail agit). Le panneau montre l'activité du compte et les mesures déjà prises : sans cet historique, un compte réactivé ne garderait aucune trace visible de ce qui lui est arrivé.
+> **17 assertions SQL** passées. Trois de mes tests étaient faux avant le code : dans une même instruction SQL, `exists(...)` ne voit pas la ligne que la fonction vient d'écrire (snapshot d'instruction), et deux actions écrites dans une même transaction partagent le `now()`, donc leur ordre est indéfini.
+> **Cycle complet prouvé en HTTP réel** : motif court refusé, auto-désactivation refusée, désactivation → `banned_until` posé → connexion refusée (`user_banned`) → réactivation → connexion rétablie. **Critère 4 vérifié** : les inscriptions du compte étaient intactes après coup. Défenses confirmées depuis un compte joueur : annuaire vide (aucun e-mail ne fuit) et tentative de désactivation de l'admin refusée par la base.
 **En tant qu'** admin, **je veux** rechercher un compte et le désactiver, **afin de** couper l'accès d'un utilisateur nuisible sans rien supprimer.
 - Critères :
   1. Page « Comptes » : recherche par pseudo ou e-mail ; affiche pseudo, région, date de création, nombre de tournois organisés et d'inscriptions.
