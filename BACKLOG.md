@@ -563,7 +563,12 @@ npm --prefix backoffice run dev
 
 **Décision du porteur du projet (2026-08-21) :** l'administration vit **uniquement dans le back office web**. Aucune page admin dans l'app mobile pour l'instant ; on pourra en ajouter plus tard si le besoin apparaît.
 
-### US-12.1 — Rôle admin et journal d'audit en base
+### US-12.1 — Rôle admin et journal d'audit en base — ✅ Livrée (2026-08-22)
+> Migration 0028 : colonne `profiles.role` (`user` / `admin`), fonction `is_admin()` en security definer (seule source de vérité), table `admin_actions` (journal d'audit), fonctions `log_admin_action()` (inexécutable par tout rôle client) et `set_admin_role()`.
+> **Piège de la 0016, revenu à l'identique** : la migration 0001 avait accordé `UPDATE` sur la table `profiles` **entière**. Toute colonne ajoutée depuis est donc écrivable par son propriétaire — n'importe qui se serait nommé admin d'un simple update sur son propre profil. Remède : `revoke update` puis `grant update` colonne par colonne, `role` exclu. Les colonnes déjà écrivables sont reconduites à l'identique (`id` compris : l'app l'envoie dans son upsert de création de profil, le retirer casserait la création de compte).
+> Garde-fous : motif obligatoire, rôle inconnu refusé, profil introuvable refusé, et **impossible de retirer le dernier admin** (seule façon de s'enfermer dehors).
+> Le premier admin est nommé à la main en SQL — procédure documentée en tête de la migration ; aucun chemin applicatif, et c'est voulu. Fait pour le développement sur le compte `TesteurQA`.
+> **18 assertions SQL passées** (transaction annulée, base intacte) : auto-nomination refusée (42501) et nomination d'un tiers refusée, non-régression de la modification de pseudo, `is_admin()` des deux côtés, refus à un non-admin, journal invisible / non écrivable / non falsifiable par un joueur, `log_admin_action` inexécutable, dernier admin protégé, nomination et révocation tracées avec leur motif.
 **En tant que** porteur du projet, **je veux** qu'un rôle admin existe en base, vérifié par la base elle-même, **afin que** les pouvoirs d'administration ne dépendent jamais de l'interface.
 - Critères :
   1. Migration : colonne `role` sur `profiles` (`user` par défaut, `admin`), **non modifiable par l'utilisateur lui-même** (GRANT par colonne, comme le code d'invitation en 0016) ; fonction `is_admin()` en `security definer`, seule source de vérité.
