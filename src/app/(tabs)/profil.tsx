@@ -1,7 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Switch, useColorScheme } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  useColorScheme,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProfileForm } from '@/components/profile-form';
@@ -9,8 +16,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Colors, MaxContentWidth, OnTint, Spacing } from '@/constants/theme';
 import { useGuest } from '@/hooks/use-guest';
+import { summarize, usePlayerHistory } from '@/hooks/use-player-history';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
+import { ordinalFr } from '@/lib/ordinal';
 import { registerForPush } from '@/lib/push';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
@@ -21,9 +30,29 @@ export default function ProfilScreen() {
   const { session, loading } = useSession();
   const { profile, loading: profileLoading, refresh } = useProfile(session?.user.id);
   const { forgetGuest } = useGuest();
+  const { history, loading: historyLoading } = usePlayerHistory(session?.user.id);
   const [editing, setEditing] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMessage, setPushMessage] = useState<string | null>(null);
+
+  // Sous-titre de la carte d'accès. Jamais d'indicateur d'activité ici : il
+  // ferait sauter la hauteur de la carte à chaque chargement.
+  const summary = summarize(history.filter((line) => line.status === 'completed'));
+  let historySubtitle: string;
+  if (historyLoading) {
+    historySubtitle = 'Chargement…';
+  } else if (summary.tournaments === 0) {
+    historySubtitle = 'Aucun résultat pour l’instant';
+  } else {
+    const count = `${summary.tournaments} tournoi${summary.tournaments > 1 ? 's' : ''}`;
+    const best =
+      summary.bestRank === null
+        ? null
+        : `meilleur : ${ordinalFr(summary.bestRank)} sur ${
+            history.find((line) => line.rank === summary.bestRank && !line.dropped)?.field_size ?? '?'
+          }`;
+    historySubtitle = [count, best].filter(Boolean).join(' · ');
+  }
 
   /**
    * Bascule une préférence de notification. Optimiste : l'interrupteur
@@ -150,13 +179,37 @@ export default function ProfilScreen() {
             {profile.faction_favorite ?? 'Non renseignée'}
           </ThemedText>
         </ThemedView>
+        {/* Ordre de lecture : qui je suis → ce que j'ai fait → mes réglages. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Mon historique. ${historySubtitle}`}
+          onPress={() => router.push('/historique')}
+          style={({ pressed }) => [
+            styles.historyCard,
+            {
+              backgroundColor: pressed ? colors.backgroundSelected : colors.backgroundElement,
+            },
+          ]}>
+          <Ionicons name="trophy-outline" size={20} color={colors.tint} />
+          <ThemedView style={styles.historyTexts}>
+            <ThemedText style={styles.historyTitle}>Mon historique</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+              {historySubtitle}
+            </ThemedText>
+          </ThemedView>
+          <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+        </Pressable>
         <Pressable
           style={({ pressed }) => [
             styles.button,
             { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },
           ]}
           onPress={() => setEditing(true)}>
-          <ThemedText style={styles.buttonPrimaryText}>Modifier mon profil</ThemedText>
+          {/* OnTint et non blanc en dur : sur l'or sombre, le blanc tombe à
+              ~1,9:1. Le bouton « Créer un compte » respectait déjà la règle. */}
+          <ThemedText style={{ color: OnTint[mode], fontWeight: '600' }}>
+            Modifier mon profil
+          </ThemedText>
         </Pressable>
         <ThemedView style={[styles.prefCard, { backgroundColor: colors.backgroundElement }]}>
           <ThemedText type="smallBold">Notifications</ThemedText>
@@ -219,13 +272,20 @@ export default function ProfilScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <Ionicons name="person-circle" size={64} color={colors.tint} />
-          <ThemedText type="title" style={styles.centeredText}>
-            Profil
-          </ThemedText>
-          {content}
-        </ThemedView>
+        {/* `flexGrow: 1` garde les états courts (visiteur, chargement)
+            centrés verticalement, tout en laissant défiler le profil complet
+            qui, lui, dépasse l'écran sur un petit téléphone. */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled">
+          <ThemedView style={styles.heroSection}>
+            <Ionicons name="person-circle" size={64} color={colors.tint} />
+            <ThemedText type="title" style={styles.centeredText}>
+              Profil
+            </ThemedText>
+            {content}
+          </ThemedView>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -263,6 +323,9 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.three,
     maxWidth: MaxContentWidth,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   heroSection: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -270,6 +333,22 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     paddingHorizontal: Spacing.four,
     gap: Spacing.three,
+  },
+  historyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    alignSelf: 'stretch',
+    minHeight: 64,
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+  },
+  historyTexts: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  historyTitle: {
+    fontWeight: '700',
   },
   centeredText: {
     textAlign: 'center',

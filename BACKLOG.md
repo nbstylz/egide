@@ -507,7 +507,14 @@ US à affiner au lancement de la phase 2 (grain volontairement plus gros) :
 ## EPIC-9 — Profil enrichi et historique (Phase 2)
 
 **Objectif :** transformer les résultats de tournois en historique joueur.
-- **US-9.1** Historique des tournois joués sur le profil (résultats, classements) — **M** — dép. US-3.9.
+- **US-9.1** Historique des tournois joués sur le profil (résultats, classements) — **M** — dép. US-3.9. — ✅ **Livrée (2026-08-22)**
+  > Migration 0035 : `player_history()`. **Aucun rang réimplémenté** — la fonction rejoue `tournament_standings` par tournoi (`cross join lateral`, même patron que `circuit_standings`) et n'en garde que la ligne du joueur. Réécrire les six départages ici, c'était se condamner à ce que les deux versions divergent au premier changement de règle. `security invoker` : la fonction ne montre que ce que l'appelant peut déjà voir.
+  > Elle renvoie **`field_size`**, le nombre de joueurs classés : un 3e sur 4 ne doit pas ressembler à un 3e sur 40. Ce dénominateur recontextualise sans seuil arbitraire, et il est affiché partout où un rang l'est.
+  > Conception validée par l'agent `ux-ui`, qui a ouvert sur un constat décisif : **l'onglet Profil n'était pas défilable** (`flex: 1` + `justifyContent: 'center'`, sans `ScrollView`). Y insérer une liste aurait poussé « Déconnexion » hors écran sur petit téléphone. D'où un **écran poussé `/historique`** et une simple carte d'accès sur le profil, plutôt qu'une section repliable.
+  > Règle d'entrée : une ligne existe pour tout tournoi où le joueur a **au moins une partie avec un score**. Elle règle seule les cas limites — inscrit jamais pointé, pointé sans partie saisie, tournoi annulé : rien à afficher, et surtout pas une histoire fausse. Les abandons sont affichés (badge « Abandon », rang masqué) mais exclus du meilleur résultat : un rang obtenu après abandon n'est pas comparable. Un tournoi **en cours** ne reçoit jamais de rang — il monte en tête dans une carte « EN COURS », et seulement pendant deux jours, au-delà desquels c'est l'organisateur qui a oublié de clôturer.
+  > Écarté volontairement : places restantes et capacité (sans objet une fois joué), taux de victoire en pourcentage (bruit statistique sur 10 à 50 parties), coloration verte/rouge du bilan (dans cette app le vert est la couleur d'**une partie** gagnée, pas d'un tournoi).
+  > Corrigé au passage : le bouton « Modifier mon profil » forçait `#ffffff` sur fond doré, alors que son voisin utilisait `OnTint`. En mode sombre, blanc sur or tombe à ~1,9:1 — c'est la règle de contraste absolue du `CLAUDE.md`.
+  > 10 assertions SQL passées, dont la cohérence du rang avec `tournament_standings` et `wins + draws + losses = played`. Données réelles vérifiées. **Reste : le parcours navigateur.**
 - **US-9.2** Statistiques par faction jouée (parties, victoires) — **M** — dép. US-9.1.
 
 ## EPIC-10 — Vérification poussée des listes (Phase 2)

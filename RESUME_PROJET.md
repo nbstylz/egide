@@ -156,6 +156,15 @@ rondes & scores, classement, listes d'armées.
    une minute depuis le dashboard ou via l'outil MCP (`restore_project`).
 9. **Un état partagé entre écrans ne peut pas vivre dans deux `useState` séparés** : le
    drapeau invité est un store hors React (`src/hooks/use-guest.ts`).
+10. **Un écran noir peut ne pas venir du code** (2026-08-22). L'app web affichait du noir
+    une fois connecté, sur Firefox. La console ne contenait aucune erreur applicative :
+    seulement un `MaxListenersExceededWarning` émis par un `contentscript.js` d'extension.
+    En navigation privée — où Firefox désactive les extensions — tout fonctionnait.
+    **Avant de chercher un bug de rendu, vérifier la console et rejouer sans extensions.**
+    Corollaire de méthode : plusieurs hypothèses plausibles (splash bloqué, modale
+    montée en permanence, chemin de cas vide) ont été écartées une à une par des
+    mesures — le rendu serveur récupéré en HTTP, le HTML fouillé — et non par
+    intuition ; c'est ce qui a évité de « corriger » du code sain.
 
 ## 9. Environnement et accès
 
