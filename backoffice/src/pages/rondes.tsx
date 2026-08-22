@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { flushPushQueue } from '../lib/push';
 import { supabase } from '../lib/supabase';
 
+import { AdminReadOnlyBanner } from '../components/admin-page-header';
 import { CloseRoundModal, type CloseResult } from '../components/close-round-modal';
 import { CompleteTournamentModal } from '../components/complete-tournament-modal';
 import { DropPlayerModal } from '../components/drop-player-modal';
@@ -40,6 +41,10 @@ type Props = {
   tournamentError: boolean;
   userId: string;
   onChanged: () => void;
+  /** Supervision : la page se rend, aucune action n'est offerte. */
+  readOnly?: boolean;
+  adminView?: boolean;
+  organizerPseudo?: string | null;
 };
 
 function normalize(value: string) {
@@ -77,6 +82,9 @@ export function RondesPage({
   tournamentError,
   userId,
   onChanged,
+  readOnly,
+  adminView,
+  organizerPseudo,
 }: Props) {
   const { registered, loading: regLoading, refresh: refreshRegistrations } = useRegistrations(
     tournament?.id
@@ -138,11 +146,15 @@ export function RondesPage({
   const lastRoundNumber = rounds.length > 0 ? rounds[rounds.length - 1].number : null;
   const selectedRound = rounds.find((r) => r.number === selectedNumber) ?? null;
   // Une ronde close est figée, qu'une autre l'ait suivie ou non.
+  // En supervision, ni saisie de score, ni génération, ni clôture : le jour J
+  // appartient à l'organisateur.
   const editable =
+    !readOnly &&
     tournament?.status === 'in_progress' &&
     selectedNumber === lastRoundNumber &&
     selectedRound?.status !== 'completed';
-  const scenarioEditable = tournament?.status === 'in_progress' && selectedRound !== null;
+  const scenarioEditable =
+    !readOnly && tournament?.status === 'in_progress' && selectedRound !== null;
 
   /**
    * On repart du scénario enregistré au changement de ronde — et à ce
@@ -408,17 +420,24 @@ export function RondesPage({
     );
   }
 
-  if (tournamentError || !tournament || tournament.organizer_id !== userId) {
+  if (tournamentError || !tournament || (!adminView && tournament.organizer_id !== userId)) {
     return (
       <div className="empty-state">
         <h2>Tournoi introuvable</h2>
         <p>Il n’existe pas, ou vous n’en êtes pas l’organisateur.</p>
-        <Link to="/tournois" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
-          Retour à mes tournois
+        <Link
+          to={adminView ? '/admin/tournois' : '/tournois'}
+          className="btn btn-secondary"
+          style={{ textDecoration: 'none' }}>
+          {adminView ? 'Retour à tous les tournois' : 'Retour à mes tournois'}
         </Link>
       </div>
     );
   }
+
+  // Les liens internes restent dans le territoire courant : une URL /admin
+  // ne doit jamais renvoyer vers la vue organisateur, et réciproquement.
+  const base = `${adminView ? '/admin' : ''}/tournois/${tournament.id}`;
 
   const header = (
     <div className="page-header">
@@ -441,7 +460,7 @@ export function RondesPage({
             Ce tournoi est en brouillon. Ouvrez les inscriptions, pointez les présents le jour J,
             puis lancez le tournoi pour générer la ronde 1.
           </p>
-          <Link to={`/tournois/${tournament.id}`}>Retour au tournoi</Link>
+          <Link to={`${base}`}>Retour au tournoi</Link>
         </div>
       </>
     );
@@ -454,7 +473,7 @@ export function RondesPage({
         <div className="empty-state">
           <h2>Tournoi annulé</h2>
           <p>Ce tournoi a été annulé : aucune ronde ne sera générée.</p>
-          <Link to={`/tournois/${tournament.id}`}>Retour au tournoi</Link>
+          <Link to={`${base}`}>Retour au tournoi</Link>
         </div>
       </>
     );
@@ -492,17 +511,22 @@ export function RondesPage({
           </div>
         </div>
         <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button
-            className="btn btn-primary"
-            style={{ alignSelf: 'flex-start', height: 48 }}
-            disabled={presentCount < 2}
-            onClick={() => setLaunchOpen(true)}>
-            Lancer le tournoi
-          </button>
-          {presentCount < 2 ? (
-            <div className="field-hint">Il faut au moins 2 joueurs pointés présents.</div>
-          ) : null}
-          <Link to={`/tournois/${tournament.id}/check-in`}>Aller au pointage →</Link>
+          {/* Lancer le tournoi d'un autre organisateur : jamais. */}
+          {readOnly ? null : (
+            <>
+              <button
+                className="btn btn-primary"
+                style={{ alignSelf: 'flex-start', height: 48 }}
+                disabled={presentCount < 2}
+                onClick={() => setLaunchOpen(true)}>
+                Lancer le tournoi
+              </button>
+              {presentCount < 2 ? (
+                <div className="field-hint">Il faut au moins 2 joueurs pointés présents.</div>
+              ) : null}
+            </>
+          )}
+          <Link to={`${base}/check-in`}>Aller au pointage →</Link>
         </div>
 
         {launchOpen ? (
@@ -609,6 +633,8 @@ export function RondesPage({
 
   return (
     <>
+      {readOnly ? <AdminReadOnlyBanner organizerPseudo={organizerPseudo} /> : null}
+
       {header}
 
       {tournament.status === 'completed' ? (
@@ -1224,7 +1250,7 @@ export function RondesPage({
               </button>
             ) : null}
             <Link
-              to={`/tournois/${tournament.id}/classement`}
+              to={`${base}/classement`}
               className="btn btn-secondary"
               style={{ textDecoration: 'none' }}>
               Voir le classement →
@@ -1263,14 +1289,16 @@ export function RondesPage({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Link
-              to={`/tournois/${tournament.id}/classement`}
+              to={`${base}/classement`}
               className="btn btn-primary"
               style={{ textDecoration: 'none' }}>
               Voir le classement final →
             </Link>
-            <button className="btn btn-primary" onClick={() => setCompleteOpen(true)}>
-              Clôturer le tournoi
-            </button>
+            {readOnly ? null : (
+              <button className="btn btn-primary" onClick={() => setCompleteOpen(true)}>
+                Clôturer le tournoi
+              </button>
+            )}
           </div>
         </div>
       ) : null}
@@ -1290,7 +1318,7 @@ export function RondesPage({
             </p>
           </div>
           <Link
-            to={`/tournois/${tournament.id}/classement`}
+            to={`${base}/classement`}
             className="btn btn-primary"
             style={{ textDecoration: 'none' }}>
             Voir le classement final →
@@ -1319,7 +1347,7 @@ export function RondesPage({
                 <th className="hide-narrow" style={{ width: 160 }}>
                   Table ronde {selectedNumber}
                 </th>
-                {tournament.status === 'in_progress' ? <th style={{ width: 120 }} /> : null}
+                {tournament.status === 'in_progress' && !readOnly ? <th style={{ width: 120 }} /> : null}
               </tr>
             </thead>
             <tbody>
@@ -1356,7 +1384,7 @@ export function RondesPage({
                           : `Table ${table.table_number}`
                         : '—'}
                     </td>
-                    {tournament.status === 'in_progress' ? (
+                    {tournament.status === 'in_progress' && !readOnly ? (
                       <td className="cell-actions">
                         {isDropped ? (
                           <button
@@ -1426,13 +1454,13 @@ export function RondesPage({
           onCancel={() => setCompleteOpen(false)}
           onReviewStandings={() => {
             setCompleteOpen(false);
-            navigate(`/tournois/${tournament.id}/classement`);
+            navigate(`${base}/classement`);
           }}
           onCompleted={async () => {
             setCompleteOpen(false);
             onChanged();
             await refresh();
-            navigate(`/tournois/${tournament.id}/classement`);
+            navigate(`${base}/classement`);
           }}
         />
       ) : null}

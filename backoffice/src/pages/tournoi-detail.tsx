@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { AdminReadOnlyBanner } from '../components/admin-page-header';
 import { Modal } from '../components/modal';
 import { StatusBadge } from '../components/status-badge';
 import { Toast } from '../components/toast';
@@ -22,6 +23,10 @@ type Props = {
   /** Identifiant du compte connecté : seule l'organisateur accède à la gestion. */
   userId: string;
   onChanged: () => void;
+  /** Supervision : la fiche se rend, mais aucune action n'est offerte. */
+  readOnly?: boolean;
+  adminView?: boolean;
+  organizerPseudo?: string | null;
 };
 
 /** Message du bandeau lecture seule selon le statut. */
@@ -35,9 +40,21 @@ function readonlyMessage(status: string): string {
   return 'Ce tournoi a été annulé.';
 }
 
-export function TournoiDetailPage({ tournament, loading, error, userId, onChanged }: Props) {
-  const editable = tournament ? EditableStatuses.includes(tournament.status) : false;
-  const cancellable = tournament ? CancellableStatuses.includes(tournament.status) : false;
+export function TournoiDetailPage({
+  tournament,
+  loading,
+  error,
+  userId,
+  onChanged,
+  readOnly,
+  adminView,
+  organizerPseudo,
+}: Props) {
+  // En supervision, aucun statut ne rouvre l'édition : l'admin observe.
+  const editable =
+    !readOnly && tournament ? EditableStatuses.includes(tournament.status) : false;
+  const cancellable =
+    !readOnly && tournament ? CancellableStatuses.includes(tournament.status) : false;
 
   // Champs du formulaire (initialisés depuis le tournoi chargé).
   const [name, setName] = useState('');
@@ -90,14 +107,19 @@ export function TournoiDetailPage({ tournament, loading, error, userId, onChange
   }
 
   // La lecture du tournoi est publique (RLS), mais la gestion est réservée
-  // à l'organisateur : pour les autres, la fiche « n'existe pas ».
-  if (error || !tournament || tournament.organizer_id !== userId) {
+  // à l'organisateur : pour les autres, la fiche « n'existe pas ». En
+  // supervision, l'admin passe cette garde — il en a le droit en base
+  // (politique de lecture de la 0029), pas celui d'écrire.
+  if (error || !tournament || (!adminView && tournament.organizer_id !== userId)) {
     return (
       <div className="empty-state">
         <h2>Tournoi introuvable</h2>
         <p>Il n’existe pas, ou vous n’en êtes pas l’organisateur.</p>
-        <Link to="/tournois" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
-          Retour à mes tournois
+        <Link
+          to={adminView ? '/admin/tournois' : '/tournois'}
+          className="btn btn-secondary"
+          style={{ textDecoration: 'none' }}>
+          {adminView ? 'Retour à tous les tournois' : 'Retour à mes tournois'}
         </Link>
       </div>
     );
@@ -252,6 +274,15 @@ export function TournoiDetailPage({ tournament, loading, error, userId, onChange
 
   return (
     <>
+      {/* Le bandeau de supervision passe avant tout : il dit chez qui on est. */}
+      {readOnly ? (
+        <AdminReadOnlyBanner
+          organizerPseudo={organizerPseudo}
+          tournamentId={tournament.id}
+          isOwner={tournament.organizer_id === userId}
+        />
+      ) : null}
+
       <div className="page-header">
         <div>
           <h1 className="page-title" style={{ display: 'inline' }}>
@@ -260,12 +291,17 @@ export function TournoiDetailPage({ tournament, loading, error, userId, onChange
           <StatusBadge status={tournament.status} />
           <div className="page-subtitle">Dernière modification le {updatedAt}</div>
         </div>
-        <button className="btn btn-secondary" onClick={openDuplicate}>
-          Dupliquer
-        </button>
+        {/* Dupliquer est une action d'organisateur : retirée, pas grisée. */}
+        {readOnly ? null : (
+          <button className="btn btn-secondary" onClick={openDuplicate}>
+            Dupliquer
+          </button>
+        )}
       </div>
 
-      {!editable ? (
+      {/* Le message « pourquoi c'est figé » parle du statut du tournoi ; en
+          supervision il serait faux (le bandeau ci-dessus dit la vraie raison). */}
+      {!editable && !readOnly ? (
         <div
           className={`banner banner-info${tournament.status === 'cancelled' ? ' banner-info-danger' : ''}`}
           style={{ marginTop: 24, maxWidth: 560 }}>

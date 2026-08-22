@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { AdminReadOnlyBanner } from '../components/admin-page-header';
 import { Toast } from '../components/toast';
 import type { TournamentWithCount } from '../hooks/use-my-tournaments';
 import { useArmyLists, type ListEntry } from '../hooks/use-army-lists';
@@ -14,6 +15,10 @@ type Props = {
   tournamentLoading: boolean;
   tournamentError: boolean;
   userId: string;
+  /** Supervision : relire une liste à la place de l'organisateur n'a pas de sens. */
+  readOnly?: boolean;
+  adminView?: boolean;
+  organizerPseudo?: string | null;
 };
 
 type ToastState = {
@@ -61,7 +66,14 @@ function matchesFilter(entry: ListEntry, filter: Filter) {
  * panneau latéral pour relire à la file — la liste reste sous les yeux
  * pendant qu'on rédige un motif de refus.
  */
-export function ListesPage({ tournament, tournamentLoading, tournamentError }: Props) {
+export function ListesPage({
+  tournament,
+  tournamentLoading,
+  tournamentError,
+  readOnly: adminReadOnly,
+  adminView,
+  organizerPseudo,
+}: Props) {
   const { entries, loading, error, refresh, review, reopen } = useArmyLists(tournament?.id);
 
   const [filter, setFilter] = useState<Filter | null>(null);
@@ -118,7 +130,11 @@ export function ListesPage({ tournament, tournamentLoading, tournamentError }: P
   const queue = visible.filter((e) => e.list !== null);
   const openIndex = openEntry ? queue.findIndex((e) => e.registrationId === openId) : -1;
 
-  const readOnly = tournament?.status !== 'open' && tournament?.status !== 'draft';
+  // Deux raisons de figer la relecture : le tournoi est lancé, ou l'on
+  // supervise la fiche de quelqu'un d'autre. La seconde prime pour le message.
+  const readOnly =
+    Boolean(adminReadOnly) ||
+    (tournament?.status !== 'open' && tournament?.status !== 'draft');
 
   function openPanel(entry: ListEntry) {
     if (!entry.list) return;
@@ -266,6 +282,19 @@ export function ListesPage({ tournament, tournamentLoading, tournamentError }: P
 
   return (
     <>
+      {adminView ? (
+        <>
+          <AdminReadOnlyBanner organizerPseudo={organizerPseudo} />
+          {/* La RLS de la 0018 réserve le contenu d'une liste au joueur et à son
+              organisateur. Sans ce bandeau, la page dirait « liste manquante »
+              pour tout le monde — un mensonge, pas une absence de droit. */}
+          <div className="banner banner-info banner-info-danger" style={{ marginBottom: 'var(--sp-4)' }}>
+            Le contenu des listes d’armées n’est pas exposé à l’administration : il reste privé
+            entre le joueur et son organisateur. Cette page n’affiche donc aucune liste ici.
+          </div>
+        </>
+      ) : null}
+
       <div className="page-header">
         <div>
           <h1 className="page-title">Listes d’armées</h1>
@@ -281,7 +310,7 @@ export function ListesPage({ tournament, tournamentLoading, tournamentError }: P
         </button>
       </div>
 
-      {readOnly ? (
+      {readOnly && !adminReadOnly ? (
         <div className="banner banner-info">
           🔒 Le tournoi est lancé : les soumissions sont closes. Les listes restent consultables.
         </div>

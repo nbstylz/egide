@@ -19,6 +19,11 @@ type Props = {
   tournamentLoading: boolean;
   tournamentError: boolean;
   userId: string;
+  /**
+   * Supervision. Le classement est une page de lecture : rien à neutraliser,
+   * seule la garde « es-tu l'organisateur ? » s'assouplit.
+   */
+  adminView?: boolean;
 };
 
 function normalize(value: string) {
@@ -63,6 +68,7 @@ export function ClassementPage({
   tournamentLoading,
   tournamentError,
   userId,
+  adminView,
 }: Props) {
   const { standings, loading, error, refresh } = useStandings(tournament?.id);
   const { rounds, pairings } = useRounds(tournament?.id);
@@ -114,17 +120,23 @@ export function ClassementPage({
     );
   }
 
-  if (tournamentError || !tournament || tournament.organizer_id !== userId) {
+  if (tournamentError || !tournament || (!adminView && tournament.organizer_id !== userId)) {
     return (
       <div className="empty-state">
         <h2>Tournoi introuvable</h2>
         <p>Il n’existe pas, ou vous n’en êtes pas l’organisateur.</p>
-        <Link to="/tournois" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
-          Retour à mes tournois
+        <Link
+          to={adminView ? '/admin/tournois' : '/tournois'}
+          className="btn btn-secondary"
+          style={{ textDecoration: 'none' }}>
+          {adminView ? 'Retour à tous les tournois' : 'Retour à mes tournois'}
         </Link>
       </div>
     );
   }
+
+  // Les liens internes restent dans le territoire courant.
+  const base = `${adminView ? '/admin' : ''}/tournois/${tournament.id}`;
 
   const header = (
     <div className="page-header">
@@ -150,7 +162,7 @@ export function ClassementPage({
           <p>
             Il apparaîtra dès la première ronde jouée. Commencez par ouvrir les inscriptions.
           </p>
-          <Link to={`/tournois/${tournament.id}`}>Retour au tournoi</Link>
+          <Link to={`${base}`}>Retour au tournoi</Link>
         </div>
       </>
     );
@@ -163,7 +175,7 @@ export function ClassementPage({
         <div className="empty-state">
           <h2>Tournoi annulé</h2>
           <p>Aucun classement n’est établi.</p>
-          <Link to={`/tournois/${tournament.id}`}>Retour au tournoi</Link>
+          <Link to={`${base}`}>Retour au tournoi</Link>
         </div>
       </>
     );
@@ -191,7 +203,7 @@ export function ClassementPage({
         <div className="empty-state">
           <h2>Aucune ronde jouée</h2>
           <p>Le classement se construira à partir des résultats de la ronde 1.</p>
-          <Link to={`/tournois/${tournament.id}/rondes`}>Aller aux rondes →</Link>
+          <Link to={`${base}/rondes`}>Aller aux rondes →</Link>
         </div>
       </>
     );
@@ -352,7 +364,7 @@ export function ClassementPage({
           Les tactiques ne sont pas saisies pour {missingTactics} table
           {missingTactics > 1 ? 's' : ''}. Le 3e critère de départage ne peut pas s’appliquer
           partout.{' '}
-          <Link to={`/tournois/${tournament.id}/rondes`}>Compléter dans Rondes &amp; scores →</Link>
+          <Link to={`${base}/rondes`}>Compléter dans Rondes &amp; scores →</Link>
         </div>
       ) : null}
 

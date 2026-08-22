@@ -578,7 +578,14 @@ npm --prefix backoffice run dev
   5. Test SQL : un utilisateur normal qui tente `update profiles set role = 'admin'` est refusé.
 - **Taille : M** — **Dépendances :** aucune.
 
-### US-12.2 — Section « Administration » : tous les tournois
+### US-12.2 — Section « Administration » : tous les tournois — 🔶 Codée (2026-08-22), test navigateur en attente
+> Conception validée par l'agent `ux-ui` avant écriture. Décisions structurantes : l'administration est un **troisième mode de sidebar** (comme le mode tournoi), sur des **routes `/admin/*` distinctes** — un lien copié-collé ne doit pas changer de sens selon qui clique dessus.
+> Base : migration 0029 (politique de lecture « un admin voit tous les tournois », **additionnelle** — la règle publique de la 0002 reste lisible telle quelle) et 0030 (`admin_tournaments()`, qui descend le comptage des inscrits et la jointure organisateur dans la base : les embarquer dans la requête tirerait des milliers de lignes pour n'afficher que des nombres).
+> Front : `pages/admin-tournois.tsx`, `hooks/use-admin.ts`, `components/admin-page-header.tsx` (coquille commune + refus d'accès + bandeau lecture seule), troisième mode dans `layout.tsx`, routes et garde dans `App.tsx`, styles `.content-inner--wide` / `.badge-admin` / `.admin-toolbar`.
+> Recherche (nom, ville, région, organisateur — insensible aux accents) et filtre de statut cumulatifs, tri clavier-accessible (`<th aria-sort><button>`, défaut de date décroissante), pagination « Afficher 50 de plus », quatre états vides distincts, avertissement explicite si la limite de 300 est atteinte.
+> **La lecture seule est vraie en base, pas seulement à l'écran** : la politique d'écriture de la 0002 n'a pas été touchée, un `update` admin sur le tournoi d'autrui touche zéro ligne (assertion 8 de la 0029). L'interface retire les actions plutôt que de les griser.
+> **Écueil trouvé** : la RLS de la 0018 réserve le contenu d'une liste d'armées au joueur et à son organisateur. En vue admin la page aurait affiché tout le monde en « liste manquante » — un mensonge. La RLS n'a pas été élargie (le contenu reste privé) et la page le dit explicitement. **À trancher par le PO** : faut-il ouvrir les listes à l'administration ?
+> 15 assertions SQL passées (8 sur la 0029, 7 sur la 0030). `tsc -b`, `vite build` et `oxlint` propres. **Reste : le parcours navigateur** — aucun navigateur pilotable sur ce poste (Chrome absent, droits admin requis).
 **En tant qu'** admin, **je veux** voir tous les tournois de la plateforme, tous statuts et tous organisateurs confondus, **afin de** superviser l'activité et repérer les anomalies.
 - Critères :
   1. Une entrée « Administration » apparaît dans la sidebar du back office **uniquement** si `is_admin()` répond vrai ; un non-admin qui force l'URL est renvoyé (et la RLS ne lui renvoie de toute façon que ses propres données).

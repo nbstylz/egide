@@ -2011,3 +2011,98 @@ a {
     padding-left: 32px;
   }
 }
+
+/* ---------- Administration ---------- */
+
+/* Six colonnes ne tiennent pas dans les 960 px des pages d'organisateur. */
+.content-inner--wide {
+  max-width: 1200px;
+}
+
+/* Pastille de l'entrée « Administration » : accent, pour la distinguer du
+   gris de « Bientôt » sans crier. */
+.badge-admin {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* L'entrée admin est décollée des items métier, en bas de la navigation. */
+.sidebar-admin-entry {
+  margin-top: auto;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--surface-active);
+}
+
+/* Filtrer une longue liste sans avoir à remonter. */
+.admin-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+  padding: var(--sp-4) 0 var(--sp-3);
+  border-bottom: 1px solid var(--surface-active);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.admin-toolbar .search-input {
+  width: 320px;
+  max-width: 100%;
+}
+
+/* Avertissement de troncature : présent, jamais tapageur. */
+.admin-truncated {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: var(--sp-2);
+}
+
+/* Deuxième ligne d'une cellule de nom : ville, région, organisateur en étroit. */
+.cell-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* En-têtes de tri atteignables au clavier. */
+.table th button {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.table th button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Rappel « organisé par » sous le nom du tournoi, dans la sidebar. */
+.sidebar-tournament-owner {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* Pendant de `.hide-narrow` : ne se montre qu'en écran étroit. */
+.show-narrow {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .admin-toolbar .search-input {
+    width: 100%;
+  }
+
+  .show-narrow {
+    display: inline;
+  }
+}

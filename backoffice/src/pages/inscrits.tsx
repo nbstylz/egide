@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { AdminReadOnlyBanner } from '../components/admin-page-header';
 import { Modal } from '../components/modal';
 import { RegistrationBadge } from '../components/registration-badge';
 import { Toast } from '../components/toast';
@@ -23,6 +24,10 @@ type Props = {
   userId: string;
   /** Recharge le tournoi (compteur d'inscrits de la barre latérale). */
   onChanged: () => void;
+  /** Supervision : la page se rend, aucune action n'est offerte. */
+  readOnly?: boolean;
+  adminView?: boolean;
+  organizerPseudo?: string | null;
 };
 
 /** Message du bandeau quand les retraits ne sont plus possibles. */
@@ -53,6 +58,9 @@ export function InscritsPage({
   tournamentError,
   userId,
   onChanged,
+  readOnly,
+  adminView,
+  organizerPseudo,
 }: Props) {
   const { registered, waitlisted, withdrawn, loading, error, refresh } = useRegistrations(
     tournament?.id
@@ -193,13 +201,16 @@ export function InscritsPage({
     );
   }
 
-  if (tournamentError || !tournament || tournament.organizer_id !== userId) {
+  if (tournamentError || !tournament || (!adminView && tournament.organizer_id !== userId)) {
     return (
       <div className="empty-state">
         <h2>Tournoi introuvable</h2>
         <p>Il n’existe pas, ou vous n’en êtes pas l’organisateur.</p>
-        <Link to="/tournois" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
-          Retour à mes tournois
+        <Link
+          to={adminView ? '/admin/tournois' : '/tournois'}
+          className="btn btn-secondary"
+          style={{ textDecoration: 'none' }}>
+          {adminView ? 'Retour à tous les tournois' : 'Retour à mes tournois'}
         </Link>
       </div>
     );
@@ -219,7 +230,9 @@ export function InscritsPage({
     );
   }
 
-  const canRemove = RemovableStatuses.includes(tournament.status);
+  // En supervision, retirer un inscrit reviendrait à opérer le tournoi à la
+  // place de l'organisateur.
+  const canRemove = !readOnly && RemovableStatuses.includes(tournament.status);
   const showStatusColumn = !canRemove;
   const total = registered.length + waitlisted.length + withdrawn.length;
   const remaining = tournament.capacity - registered.length;
@@ -236,6 +249,8 @@ export function InscritsPage({
 
   return (
     <>
+      {readOnly ? <AdminReadOnlyBanner organizerPseudo={organizerPseudo} /> : null}
+
       <div className="page-header">
         <div>
           <h1 className="page-title">Inscrits</h1>
@@ -251,7 +266,7 @@ export function InscritsPage({
         ) : null}
       </div>
 
-      {!canRemove ? (
+      {!canRemove && !readOnly ? (
         <div
           className={`banner banner-info${tournament.status === 'cancelled' ? ' banner-info-danger' : ''}`}
           style={{ marginTop: 24, maxWidth: 560 }}>

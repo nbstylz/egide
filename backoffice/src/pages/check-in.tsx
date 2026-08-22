@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { AdminReadOnlyBanner } from '../components/admin-page-header';
 import { LaunchTournamentModal } from '../components/launch-tournament-modal';
 import { Modal } from '../components/modal';
 import { Toast } from '../components/toast';
@@ -23,6 +24,10 @@ type Props = {
   tournamentError: boolean;
   userId: string;
   onChanged: () => void;
+  /** Supervision : la page se rend, aucune action n'est offerte. */
+  readOnly?: boolean;
+  adminView?: boolean;
+  organizerPseudo?: string | null;
 };
 
 type ToastState = {
@@ -102,6 +107,9 @@ export function CheckInPage({
   tournamentError,
   userId,
   onChanged,
+  readOnly,
+  adminView,
+  organizerPseudo,
 }: Props) {
   const { registered, waitlisted, loading, error, refresh } = useRegistrations(tournament?.id);
 
@@ -128,7 +136,9 @@ export function CheckInPage({
     );
   }, [registered]);
 
-  const editable = tournament ? CheckInEditableStatuses.includes(tournament.status) : false;
+  // Pointer un joueur à la place de l'organisateur fausserait son jour J.
+  const editable =
+    !readOnly && tournament ? CheckInEditableStatuses.includes(tournament.status) : false;
 
   const presentCount = registered.filter((r) => presence[r.id]).length;
   const todoCount = registered.length - presentCount;
@@ -262,17 +272,23 @@ export function CheckInPage({
     );
   }
 
-  if (tournamentError || !tournament || tournament.organizer_id !== userId) {
+  if (tournamentError || !tournament || (!adminView && tournament.organizer_id !== userId)) {
     return (
       <div className="empty-state">
         <h2>Tournoi introuvable</h2>
         <p>Il n’existe pas, ou vous n’en êtes pas l’organisateur.</p>
-        <Link to="/tournois" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
-          Retour à mes tournois
+        <Link
+          to={adminView ? '/admin/tournois' : '/tournois'}
+          className="btn btn-secondary"
+          style={{ textDecoration: 'none' }}>
+          {adminView ? 'Retour à tous les tournois' : 'Retour à mes tournois'}
         </Link>
       </div>
     );
   }
+
+  // Les liens internes restent dans le territoire courant.
+  const base = `${adminView ? '/admin' : ''}/tournois/${tournament.id}`;
 
   if (tournament.status === 'draft') {
     return (
@@ -282,7 +298,7 @@ export function CheckInPage({
           Ce tournoi est en brouillon. Ouvrez les inscriptions pour que des joueurs puissent
           s’inscrire, puis revenez pointer le jour J.
         </p>
-        <Link to={`/tournois/${tournament.id}`}>Retour au tournoi</Link>
+        <Link to={`${base}`}>Retour au tournoi</Link>
       </div>
     );
   }
@@ -292,7 +308,7 @@ export function CheckInPage({
       <div className="empty-state">
         <h2>Tournoi annulé</h2>
         <p>Ce tournoi a été annulé, il n’y a pas de pointage à effectuer.</p>
-        <Link to={`/tournois/${tournament.id}`}>Retour au tournoi</Link>
+        <Link to={`${base}`}>Retour au tournoi</Link>
       </div>
     );
   }
@@ -322,7 +338,7 @@ export function CheckInPage({
             Personne n’est inscrit à ce tournoi pour l’instant. Les inscriptions se font depuis
             l’application mobile EGIDE.
           </p>
-          <Link to={`/tournois/${tournament.id}/inscrits`}>Voir les inscrits →</Link>
+          <Link to={`${base}/inscrits`}>Voir les inscrits →</Link>
         </div>
       </>
     );
@@ -334,6 +350,8 @@ export function CheckInPage({
 
   return (
     <>
+      {readOnly ? <AdminReadOnlyBanner organizerPseudo={organizerPseudo} /> : null}
+
       <div className="page-header">
         <div>
           <h1 className="page-title">Check-in</h1>
@@ -343,7 +361,7 @@ export function CheckInPage({
         </div>
       </div>
 
-      {!editable ? (
+      {!editable && !readOnly ? (
         <div className="banner banner-info" style={{ marginTop: 24, maxWidth: 640 }}>
           🔒{' '}
           {tournament.status === 'in_progress'
@@ -558,7 +576,7 @@ export function CheckInPage({
             // La ronde 1 vient d'être générée : préviens les joueurs.
             flushPushQueue();
             // On envoie l'organisateur voir les appariements, pas la liste figée.
-            navigate(`/tournois/${tournament.id}/rondes`);
+            navigate(`${base}/rondes`);
           }}
         />
       ) : null}
@@ -571,7 +589,7 @@ export function CheckInPage({
             Un joueur en attente ne peut pas être pointé tant qu’une place n’est pas libérée.
             Retirez d’abord un absent depuis la page Inscrits : le premier de cette liste prendra
             automatiquement sa place et apparaîtra ici, prêt à être pointé.{' '}
-            <Link to={`/tournois/${tournament.id}/inscrits`}>Gérer les inscrits →</Link>
+            <Link to={`${base}/inscrits`}>Gérer les inscrits →</Link>
           </div>
           <table className="table table-static">
             <thead>
