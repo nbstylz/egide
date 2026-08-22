@@ -414,9 +414,12 @@ export default function ClassementScreen() {
         </View>
         {content}
 
-        {/* Les six départages, dans les mêmes termes que le back office. */}
+        {/* Les six départages, dans les mêmes termes que le back office.
+            Montée seulement à l'ouverture : sur React Native Web, un Modal
+            déjà monté ne disparaît pas quand `visible` repasse à faux. */}
+        {rulesOpen ? (
         <Modal
-          visible={rulesOpen}
+          visible
           animationType="slide"
           presentationStyle="pageSheet"
           onRequestClose={() => setRulesOpen(false)}>
@@ -452,6 +455,7 @@ export default function ClassementScreen() {
             </ScrollView>
           </View>
         </Modal>
+        ) : null}
       </SafeAreaView>
     </ThemedView>
   );

@@ -151,8 +151,16 @@ export function FiltersModal({
 
   const ctaDisabled = invalidDates || results.length === 0;
 
+  // Sur React Native Web, un Modal monté ne disparaît pas parce que `visible`
+  // vaut faux : il recouvre l'écran. L'annuaire montait cette modale en
+  // permanence, ce qui posait un voile plein écran sur l'onglet Événements.
+  // Même remède qu'en `region-picker` : on ne monte rien tant qu'elle est
+  // fermée. La garde est placée après tous les hooks — un retour anticipé
+  // au-dessus casserait leur ordre.
+  if (!visible) return null;
+
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible animationType="slide" onRequestClose={onClose}>
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           {/* En-tête */}
