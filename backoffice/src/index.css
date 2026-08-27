@@ -2169,3 +2169,33 @@ a {
 .stat-card-link:hover {
   border-color: var(--accent);
 }
+
+/* Faction corrigée à même le tableau des inscrits (US-9.4). Plus discret qu'un
+   champ de formulaire : c'est une cellule, pas une saisie — la bordure
+   n'apparaît qu'au survol et au focus, sinon toute la colonne crierait. */
+.faction-select {
+  width: 100%;
+  max-width: 190px;
+  height: 32px;
+  padding: 0 var(--sp-1);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.faction-select:hover:not(:disabled) {
+  border-color: var(--surface-active);
+}
+
+.faction-select:focus {
+  outline: none;
+  background: var(--surface);
+  border-color: var(--accent);
+}
+
+.faction-select:disabled {
+  opacity: 0.6;
+}

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { AdminReadOnlyBanner } from '../components/admin-page-header';
+import { FactionCell } from '../components/faction-cell';
 import { Modal } from '../components/modal';
 import { RegistrationBadge } from '../components/registration-badge';
 import { Toast } from '../components/toast';
@@ -73,6 +74,9 @@ export function InscritsPage({
   const [busy, setBusy] = useState(false);
   const [removeError, setRemoveError] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // Factions corrigées pendant la session, gardées ici plutôt que rechargées :
+  // recharger recrée les lignes du tableau et fait perdre sa place à l'œil.
+  const [factionEdits, setFactionEdits] = useState<Record<string, string | null>>({});
   const [promotedId, setPromotedId] = useState<string | null>(null);
 
   // Les positions sont calculées avant tout filtrage : chercher un nom ne doit
@@ -233,6 +237,11 @@ export function InscritsPage({
   // En supervision, retirer un inscrit reviendrait à opérer le tournoi à la
   // place de l'organisateur.
   const canRemove = !readOnly && RemovableStatuses.includes(tournament.status);
+  // L'organisateur arbitre : il corrige tant que le tournoi vit. Une fois
+  // terminé, la base ne le laisse plus que combler un vide — la cellule reste
+  // donc offerte, et c'est la fonction qui tranche (US-9.4).
+  const canEditFaction =
+    !readOnly && userId === tournament.organizer_id && tournament.status !== 'cancelled';
   const showStatusColumn = !canRemove;
   const total = registered.length + waitlisted.length + withdrawn.length;
   const remaining = tournament.capacity - registered.length;
@@ -360,7 +369,19 @@ export function InscritsPage({
                         <PlayerCell registration={registration} />
                       </td>
                       <td className="hide-narrow">
-                        {registration.faction ?? '—'}
+                        <FactionCell
+                          registrationId={registration.id}
+                          faction={
+                            registration.id in factionEdits
+                              ? factionEdits[registration.id]
+                              : registration.faction
+                          }
+                          editable={canEditFaction}
+                          onSaved={(value) =>
+                            setFactionEdits((current) => ({ ...current, [registration.id]: value }))
+                          }
+                          onError={setToast}
+                        />
                       </td>
                       <td className="hide-narrow">{registration.profile?.region ?? '—'}</td>
                       <td className="hide-narrow" style={{ fontSize: 13 }}>
