@@ -200,6 +200,25 @@ export default function ProfilScreen() {
           <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
         </Pressable>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Le méta : ce que jouent les autres"
+          onPress={() => router.push('/meta')}
+          style={({ pressed }) => [
+            styles.historyCard,
+            {
+              backgroundColor: pressed ? colors.backgroundSelected : colors.backgroundElement,
+            },
+          ]}>
+          <Ionicons name="bar-chart-outline" size={20} color={colors.tint} />
+          <ThemedView style={styles.historyTexts}>
+            <ThemedText style={styles.historyTitle}>Le méta</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+              Ce que jouent les autres, et comment ça se passe
+            </ThemedText>
+          </ThemedView>
+          <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+        </Pressable>
+        <Pressable
           style={({ pressed }) => [
             styles.button,
             { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },

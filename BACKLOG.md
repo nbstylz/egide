@@ -655,7 +655,12 @@ L'agent `ux-ui` voulait l'appariement **sur un seul appareil** (celui de l'organ
 
 - **US-11.1** Classement ELO national — dép. EPIC-9.
 - **US-11.2** Carte interactive des événements — dép. EPIC-2.
-- **US-11.3** Statistiques méta (factions, taux de victoire) — dép. EPIC-9.
+- **US-11.3** Statistiques méta (factions, taux de victoire) — dép. EPIC-9. — ✅ **Livrée (2026-08-27)**
+  > Migration 0050 : `faction_meta_stats(depuis, région)` et `meta_coverage()`. Écran `/meta`, accessible depuis le Profil — après « ce que j'ai fait », « ce que font les autres ».
+  > **C'est ici que revient le taux de victoire**, écarté du profil par la décision 13. Et c'est **la base qui décide**, faction par faction : sous 30 parties elle ne renvoie **aucun** taux, l'écran affiche les entiers et dit pourquoi. Le seuil vit à un seul endroit, l'écran ne peut pas afficher un chiffre que la base juge creux.
+  > **Les tournois par équipes sont exclus** : leurs appariements sont négociés par les capitaines, un taux y mesurerait autant leur flair que la force d'une faction. Le bye et les forfaits ne comptent pas — sinon une faction paraîtrait forte d'avoir eu de la chance au tirage.
+  > La couverture est affichée en tête (tournois, parties, joueurs, depuis quand) : sans ce cadre, un tableau de pourcentages laisse croire à une mesure établie là où il n'y a parfois que deux tournois.
+  > 5 assertions SQL passées, dont : aucun taux sous le seuil, bye et forfaits écartés, filtre régional.
 - **US-11.4** Publication App Store + Play Store (comptes développeur, assets, review).
 
 ---
