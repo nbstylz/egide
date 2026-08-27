@@ -36,6 +36,7 @@ import {
 } from '@/constants/theme';
 import { useArmyList } from '@/hooks/use-army-list';
 import { useFactionDeclaration } from '@/hooks/use-faction-declaration';
+import { useMyEncounter } from '@/hooks/use-my-encounter';
 import { useMyPairing } from '@/hooks/use-my-pairing';
 import { useMyTeam } from '@/hooks/use-my-team';
 import { useProfile } from '@/hooks/use-profile';
@@ -92,6 +93,13 @@ export default function EvenementDetailScreen() {
     refreshedAt,
     refresh: refreshPairing,
   } = useMyPairing(id, session?.user.id, tournament?.status);
+
+  // La rencontre de mon équipe, quand le tournoi est par équipes.
+  const { encounter: myEncounter } = useMyEncounter(
+    id,
+    myTeamRegistration?.id ?? null,
+    tournament?.status
+  );
 
   // Ma liste d'armée, chargée seulement si j'ai une inscription.
   const { list: armyList, refresh: refreshArmyList } = useArmyList(myRegistration?.id);
@@ -676,6 +684,22 @@ export default function EvenementDetailScreen() {
                 standings={standings}
                 tablesCount={tablesCount}
                 factionOf={factionOf}
+                teamMatch={
+                  myEncounter && myTeamRegistration
+                    ? {
+                        myTeamName: myTeamRegistration.team?.name ?? 'Mon équipe',
+                        opponentTeamName:
+                          [...engagedTeams, ...waitlistedTeams].find(
+                            (t) => t.id === myEncounter.opponentTeamRegistrationId
+                          )?.team?.name ?? 'l’équipe adverse',
+                        pointsFor: myEncounter.points_for,
+                        pointsAgainst: myEncounter.points_against,
+                        tablesScored: myEncounter.tables_scored,
+                        tablesTotal: myEncounter.tables_total,
+                        awaitingPairing: myEncounter.pairing_status === 'pending',
+                      }
+                    : null
+                }
                 loading={pairingLoading}
                 failed={pairingFailed}
                 refreshedAt={refreshedAt}

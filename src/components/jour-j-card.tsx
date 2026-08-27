@@ -39,6 +39,20 @@ type Props = {
    * endroit où mentir.
    */
   factionOf: (playerId: string | null | undefined) => string | null;
+  /**
+   * La rencontre d'équipe en cours, si le tournoi est par équipes. Elle est le
+   * **contexte** : la table et l'adversaire restent l'information vitale, celle
+   * qu'on vient chercher en marchant.
+   */
+  teamMatch: {
+    myTeamName: string;
+    opponentTeamName: string;
+    pointsFor: number;
+    pointsAgainst: number;
+    tablesScored: number;
+    tablesTotal: number;
+    awaitingPairing: boolean;
+  } | null;
 };
 
 /** « 15 – 5 » insécable : le score ne se coupe jamais en fin de ligne. */
@@ -73,6 +87,7 @@ export function JourJCard({
   onSeeTables,
   onSeeStandings,
   factionOf,
+  teamMatch,
 }: Props) {
   const scheme = useColorScheme();
   const mode = scheme === 'dark' ? 'dark' : 'light';
@@ -98,6 +113,32 @@ export function JourJCard({
       Ronde {currentRound.number} sur {tournament.rounds_count}
     </ThemedText>
   ) : null;
+
+  const encounterLine = teamMatch ? (
+    <MetaRow icon="people-outline">
+      <ThemedText type="smallBold" numberOfLines={1}>
+        {teamMatch.myTeamName}
+        <ThemedText type="small" themeColor="textSecondary">
+          {' '}
+          contre {teamMatch.opponentTeamName}
+        </ThemedText>
+      </ThemedText>
+    </MetaRow>
+  ) : null;
+
+  const encounterScore =
+    teamMatch && teamMatch.tablesScored > 0 ? (
+      <MetaRow icon="stats-chart-outline">
+        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+          Rencontre : {teamMatch.pointsFor} – {teamMatch.pointsAgainst}
+          {teamMatch.tablesScored < teamMatch.tablesTotal
+            ? ` · ${teamMatch.tablesTotal - teamMatch.tablesScored} table${
+                teamMatch.tablesTotal - teamMatch.tablesScored > 1 ? 's' : ''
+              } en cours`
+            : ''}
+        </ThemedText>
+      </MetaRow>
+    ) : null;
 
   const scenario =
     currentRound?.scenario && !completed ? (
@@ -297,6 +338,7 @@ export function JourJCard({
     return (
       <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
         {surTitre}
+        {encounterLine}
         <View style={styles.resultRow}>
           <ThemedText style={[styles.resultOutcome, { color: outcomeColor }]}>{outcome}</ThemedText>
           <ThemedText style={styles.resultScore}>{score(mine, theirs)}</ThemedText>
@@ -333,6 +375,7 @@ export function JourJCard({
           },
         ]}>
         {surTitre}
+        {encounterLine}
         {scenario}
         <View
           style={styles.matchRow}
@@ -367,6 +410,7 @@ export function JourJCard({
             ) : null}
           </View>
         </View>
+        {encounterScore}
         {footer}
       </View>
     );

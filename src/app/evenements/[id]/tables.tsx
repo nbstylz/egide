@@ -49,6 +49,9 @@ export default function TablesScreen() {
   const [rounds, setRounds] = useState<RoundInfo[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pairings, setPairings] = useState<PairingInfo[]>([]);
+  // Les rencontres de la ronde : dans un tournoi par équipes, une table isolée
+  // ne dit rien — c'est « Aubrac contre Les Corbeaux » qu'on cherche des yeux.
+  const [encounters, setEncounters] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [search, setSearch] = useState('');
@@ -91,7 +94,7 @@ export default function TablesScreen() {
     const { data, error } = await supabase
       .from('pairings')
       .select(
-        'id, table_number, player_a_id, player_b_id, score_a, score_b, player_a:profiles!pairings_player_a_id_fkey(pseudo), player_b:profiles!pairings_player_b_id_fkey(pseudo)'
+        'id, table_number, player_a_id, player_b_id, score_a, score_b, team_pairing_id, player_a:profiles!pairings_player_a_id_fkey(pseudo), player_b:profiles!pairings_player_b_id_fkey(pseudo)'
       )
       .eq('round_id', selectedId)
       .order('table_number');
@@ -100,6 +103,29 @@ export default function TablesScreen() {
       return;
     }
     setPairings((data as unknown as PairingInfo[]) ?? []);
+
+    const { data: teams } = await supabase
+      .from('team_pairings')
+      .select(
+        'id, encounter_number, team_a:team_registrations!team_pairings_team_a_id_fkey(team:teams(name)), team_b:team_registrations!team_pairings_team_b_id_fkey(team:teams(name))'
+      )
+      .eq('round_id', selectedId)
+      .order('encounter_number');
+    const map = new Map<string, string>();
+    for (const row of (teams as unknown as {
+      id: string;
+      encounter_number: number;
+      team_a: { team: { name: string } | null } | null;
+      team_b: { team: { name: string } | null } | null;
+    }[]) ?? []) {
+      map.set(
+        row.id,
+        row.team_b
+          ? `Rencontre ${row.encounter_number} — ${row.team_a?.team?.name ?? 'Équipe'} contre ${row.team_b.team?.name ?? 'Équipe'}`
+          : `Rencontre ${row.encounter_number} — ${row.team_a?.team?.name ?? 'Équipe'} a le bye`
+      );
+    }
+    setEncounters(map);
   }, [selectedId]);
 
   useEffect(() => {
@@ -142,7 +168,16 @@ export default function TablesScreen() {
     return `${found.pseudo} joue à la table ${pairing.table_number}, contre ${other?.pseudo ?? '—'}.`;
   }, [query, filtered]);
 
-  function renderPairing({ item }: { item: PairingInfo }) {
+  function renderPairing({ item, index }: { item: PairingInfo; index: number }) {
+    // En-tête de rencontre, posé sur la première table de chaque groupe.
+    const label = item.team_pairing_id ? encounters.get(item.team_pairing_id) : null;
+    const previous = index > 0 ? ordered[index - 1] : null;
+    const header =
+      label && item.team_pairing_id !== previous?.team_pairing_id ? (
+        <ThemedText type="smallBold" style={styles.encounterHeader} numberOfLines={2}>
+          {label}
+        </ThemedText>
+      ) : null;
     const bye = item.player_b_id === null;
     const mine = userId !== undefined && (item.player_a_id === userId || item.player_b_id === userId);
     const scored = item.score_a !== null && item.score_b !== null;
@@ -178,6 +213,8 @@ export default function TablesScreen() {
     );
 
     return (
+      <>
+      {header}
       <View
         style={[
           styles.row,
@@ -214,6 +251,7 @@ export default function TablesScreen() {
           </ThemedText>
         ) : null}
       </View>
+      </>
     );
   }
 
@@ -462,6 +500,10 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     padding: Spacing.two,
     height: RowHeight,
+  },
+  encounterHeader: {
+    marginTop: Spacing.two,
+    marginBottom: Spacing.half,
   },
   tableBadge: {
     width: 44,

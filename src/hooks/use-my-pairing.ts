@@ -16,6 +16,8 @@ export type PairingInfo = {
   player_b_id: string | null;
   score_a: number | null;
   score_b: number | null;
+  /** Rencontre d'équipes dont ce match fait partie, ou null (US-7.5). */
+  team_pairing_id?: string | null;
   player_a: { pseudo: string } | null;
   player_b: { pseudo: string } | null;
 };
