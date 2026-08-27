@@ -27,7 +27,7 @@ deux côtés (`lib/supabase.ts`, `lib/tournaments.ts`, `lib/ordinal.ts`, `hooks/
 
 ### Règle d'architecture centrale
 
-**La logique métier vit dans Postgres, pas dans le client.** 45 migrations numérotées et
+**La logique métier vit dans Postgres, pas dans le client.** 51 migrations numérotées et
 **immuables** dans `supabase/migrations/` — pour changer quoi que ce soit, on **ajoute** une
 migration `00NN_description.sql`, on n'édite jamais une existante. Les fonctions sont en
 `security definer` avec des `grant`/`revoke` explicites, appelées via `supabase.rpc(...)`.
@@ -54,7 +54,7 @@ Fonctions clés : `register_for_tournament`, `promote_waitlist`, `start_tourname
 ## 4. État d'avancement
 
 **Livré et testé : EPIC-1 à 6 (MVP phase 1), EPIC-12 (administration) et EPIC-9 (profil enrichi).**
-Migrations 0001 à 0045.
+Migrations 0001 à 0051.
 
 | EPIC | Contenu | État |
 |---|---|---|
@@ -65,7 +65,10 @@ Migrations 0001 à 0045.
 | 5 | Listes d'armées (texte + PDF, relecture organisateur) | Livré |
 | 6 | Notifications push | **Codé, réception non vérifiée** |
 | 9 | Profil enrichi : historique, factions jouées, **déclaration de faction** | Livré (2026-08-27) |
-| 7 | **Tournois par équipes** : US-7.1 à 7.6 livrées, 7.7 à 7.9 restantes | En cours (2026-08-27) |
+| 7 | **Tournois par équipes** : les 9 US, inscription → appariement capitaines → classement | Livré (2026-08-27) |
+| 8 | **Chat** : fils de tournoi et d'équipe, modération, signalement | Livré (2026-08-27) |
+| 10 | Vérification des listes | **Instruit, en attente d'arbitrage** (`ETUDE_LISTES.md`) |
+| 11 | Phase 3 : ELO national et statistiques méta livrés ; carte et stores bloqués | Partiel (2026-08-27) |
 | 12 | Administration de la plateforme (6 US) | Livré (2026-08-22), validé en navigateur |
 
 Post-MVP livré par ailleurs : Circuit FR (+ page publique partageable), duplication de
@@ -132,19 +135,24 @@ avec son troisième mode de barre latérale sur les routes `/admin/*`.
     « ce que j'aime jouer » là où l'écran promettait « ce qui est aligné aujourd'hui ».
     Elle reste légitime au profil et au roster d'équipe. Conséquence assumée : les
     tournois déjà joués n'affichent plus de faction tant que personne n'a comblé.
-13. **Le pouvoir d'administration est vérifié par la base, jamais par l'interface.**
+13. **Un seuil qui décide de montrer un chiffre vit en base, pas dans l'écran.**
+    Le taux de victoire méta n'est calculé qu'au-delà de 30 parties, l'ELO
+    n'apparaît qu'à partir de 5 parties jouées : sous ces seuils, les fonctions
+    renvoient `null` plutôt qu'un nombre. L'écran ne peut donc pas afficher un
+    chiffre creux, et le seuil ne se règle qu'à un seul endroit.
+14. **Le pouvoir d'administration est vérifié par la base, jamais par l'interface.**
     `is_admin()` est la seule source de vérité ; masquer une entrée de menu n'est qu'un
     confort. Corollaire tenu partout : la lecture seule de l'admin est vraie en base — un
     `update` admin sur le tournoi d'autrui touche zéro ligne, la politique d'écriture de la
     0002 n'ayant jamais été touchée.
-14. **Règle d'ergonomie de l'administration : le tableau consulte, le détail agit.** Aucune
+15. **Règle d'ergonomie de l'administration : le tableau consulte, le détail agit.** Aucune
     action destructrice dans une ligne de liste. Vaut pour l'annulation de tournoi, la
     désactivation de compte et la dissolution d'équipe.
-15. **Aucun pourcentage sur un petit échantillon.** Sur cinq parties, un taux de victoire de
+16. **Aucun pourcentage sur un petit échantillon.** Sur cinq parties, un taux de victoire de
     60 % couvre en réalité de 15 % à 95 % : il n'informe pas, il fait croire à une mesure.
     Les statistiques joueur n'affichent que des entiers ; le taux de victoire est renvoyé à
     l'EPIC-11 (stats méta), où l'échantillon est celui de la communauté.
-16. **Mieux vaut ne rien montrer que raconter une histoire fausse.** Appliqué trois fois :
+17. **Mieux vaut ne rien montrer que raconter une histoire fausse.** Appliqué trois fois :
     un inscrit jamais pointé n'apparaît pas dans son historique ; un tournoi en cours ne
     reçoit pas de rang ; `profiles.faction_favorite` n'est jamais substituée à la faction
     réellement jouée.
@@ -233,6 +241,16 @@ avec son troisième mode de barre latérale sur les routes `/admin/*`.
     `security definer` — le droit d'`UPDATE` y a été **retiré** au lieu d'être
     découpé, et le `SELECT` d'`anon` re-accordé colonne par colonne. **Règle
     permanente : toute colonne ajoutée désormais à `registrations` est privée.**
+15. **Une contrainte `check` peut interdire une manœuvre qu'on croyait libre.**
+    La suppression douce des messages voulait vider le corps ; la contrainte de
+    longueur (1 à 2000 caractères) le refusait. L'assertion l'a montré avant tout
+    usage. La correction (masquer à la lecture, conserver en base) s'est révélée
+    meilleure que l'intention de départ — **écrire l'assertion a produit un
+    meilleur design, pas seulement un bug trouvé**.
+16. **Toute fonction qui recopie une ligne colonne par colonne est à rouvrir à
+    chaque ajout de colonne.** `duplicate_tournament` recopiait `type` sans
+    `team_size` : la duplication d'un tournoi par équipes échouait sur une
+    contrainte, avec un message incompréhensible pour l'organisateur.
 
 ## 9. Environnement et accès
 
@@ -264,49 +282,53 @@ avec son troisième mode de barre latérale sur les routes `/admin/*`.
 - **Design system publié** sur claude.ai/design (projet « EGIDE »), sources dans
   `design-system/`. `src/constants/theme.ts` fait foi, les fiches suivent.
 
-## 10. Prochaines étapes possibles
+## 10. Prochaines étapes
 
-**Dix questions attendent le porteur sur l'EPIC-7** — toutes implémentées sous
-hypothèse par défaut, aucune bloquante : voir le tableau en tête de l'EPIC-7 dans
-`BACKLOG.md`. Les cinq premières (protocole d'appariement, effectif pair, issue
-d'une rencontre, départages d'équipe, bye d'équipe) méritent une relecture avant
-le premier vrai tournoi par équipes.
+### Ce qui ne peut avancer que par le porteur
 
-**La décision qui reste vraiment ouverte :**
+1. **EPIC-6 — réception des notifications.** Tout est codé et vérifié jusqu'à
+   l'envoi. Il manque `eas login` puis un development build
+   (`eas build --profile development --platform android`) : Expo Go ne reçoit
+   plus les push distantes depuis le SDK 53. Le mot de passe EAS ne doit jamais
+   passer par l'agent.
+2. **Parcourir l'application dans un navigateur.** Aucun écran livré depuis le
+   27 août n'a jamais été affiché : tout a été vérifié par le typage, le lint et
+   des assertions SQL, jamais à l'œil. C'est l'angle mort le plus large du
+   projet, et il grandit à chaque écran.
+3. **Dix questions de règles AoS**, toutes implémentées sous hypothèse par
+   défaut et rectifiables par une migration : voir le tableau en tête de
+   l'EPIC-7 dans `BACKLOG.md`. Les cinq premières (protocole d'appariement,
+   effectif pair, issue d'une rencontre, départages d'équipe, bye d'équipe)
+   méritent une relecture **avant le premier vrai tournoi par équipes**.
+4. **Arbitrer l'EPIC-10** (`ETUDE_LISTES.md`) : ouvrir la vérification de
+   l'addition, faire vérifier la question juridique, ou classer l'EPIC.
+5. **US-11.2, la carte interactive** : elle impose une dépendance native, donc
+   un development build et la fin du test dans `npm run web`. C'est un
+   changement des conditions de développement, pas un simple écran.
+6. **US-11.4, publication sur les stores** : comptes développeur, assets, review.
+7. **Deux arbitrages hérités de l'EPIC-12** : ouvrir ou non le contenu des
+   listes d'armées à l'administration, et livrer ou non la page « Journal ».
 
-1. **Confirmer le protocole d'appariement des capitaines** avant d'ouvrir l'EPIC-7 : l'US-7.4
-   signale que l'ordre des choix et le tempo varient selon les formats.
+### Ce qui reste faisable sans lui
 
-**Deux arbitrages hérités de l'EPIC-12 :** ouvrir ou non le contenu des listes d'armées à
-l'administration (aujourd'hui privé entre le joueur et son organisateur, et la page le dit),
-et livrer ou non la page « Journal » — sa place est réservée dans la navigation, tout est
-déjà en base. Un journal d'audit que personne n'ouvre ne protège personne.
+- **Paiements rail A (Stripe)** : la base est à moitié posée depuis la 0023
+  (`registration_payments`, `stripe_accounts`, cron
+  `liberer-inscriptions-impayees`), mais **zéro ligne côté client**. Lire
+  `PAIEMENTS.md` avant la première ligne de code.
+- **US-7.10** : ouvrir les listes d'armées à l'équipe adverse avant
+  l'appariement — décision de confidentialité, à arbitrer d'abord.
+- **Améliorations notées** : sauvegarde locale des scores en cours de saisie
+  (coupure réseau), export CSV des inscrits, formulaire de création de tournoi
+  dans le back office, partage du code d'invitation par lien profond.
+- **Ménage repéré** : les fonctions de trigger `queue_*` et
+  `guard_registration_faction` sont exécutables par `anon` et
+  `authenticated` (avertissement des advisors Supabase). Sans danger — une
+  fonction de trigger ne s'appelle pas directement — mais à révoquer en une
+  migration groupée.
 
-**Livré le 27 août 2026 :** liste des 24 factions validée par le porteur (Beasts of Chaos
-retirée, Helsmiths of Hashut ajoutée, pas d'entrée « Autre »), puis **US-9.3 en entier**
-(migrations 0038-0039, carte « Ma préparation », fin de la substitution de la faction
-favorite dans les deux applications). **Reste l'US-9.4** : permettre à l'organisateur de
-renseigner la faction d'un joueur au pointage — un inscrit de la veille qui ne déclare
-rien ne peut plus jamais combler seul. Le référentiel `public.factions` est déjà en base
-pour ça, le back office n'ayant aucune copie de `src/lib/factions.ts`.
-
-**Ensuite, par ordre de valeur :**
-
-1. **Finir l'EPIC-6** : development build EAS, puis vérifier la réception d'une notification.
-   Exige `eas login` par le porteur — son mot de passe ne doit jamais transiter par l'agent.
-2. **EPIC-7** : tournois par équipes et appariements capitaines (le gros morceau de valeur),
-   une fois le point 3 ci-dessus tranché.
-3. **Paiements rail A (Stripe)** : la base est à moitié posée depuis la migration 0023
-   (`registration_payments`, `stripe_accounts`, cron `liberer-inscriptions-impayees`), mais
-   **zéro ligne côté client**. Lire `PAIEMENTS.md` avant la première ligne de code.
-4. Améliorations notées : sauvegarde locale des scores en cours de saisie (coupure réseau),
-   export CSV des inscrits, formulaire de création de tournoi dans le back office,
-   partage du code d'invitation par lien profond.
-
-**Limite connue à ne pas redécouvrir** : un bannissement bloque la connexion et le
-renouvellement de session, mais un jeton d'accès déjà émis reste valide jusqu'à son
-expiration (une heure). Comportement standard de Supabase ; le corriger demanderait de
-révoquer explicitement les sessions.
+**Limite connue à ne pas redécouvrir** : un bannissement bloque la connexion et
+le renouvellement de session, mais un jeton d'accès déjà émis reste valide
+jusqu'à son expiration (une heure). Comportement standard de Supabase.
 
 ## 11. Documents de référence dans le dépôt
 
@@ -316,4 +338,5 @@ révoquer explicitement les sessions.
 | `BACKLOG.md` | Tous les EPICs et User Stories, avec notes de livraison |
 | `CAHIER_DES_CHARGES.md` | Périmètre et phasage d'origine |
 | `RESUME_PROJET.md` | Ce document |
+| `ETUDE_LISTES.md` | Faisabilité de la vérification des listes (EPIC-10) — **décision en attente** |
 | `backoffice/README.md` | Spécificités du back office |
