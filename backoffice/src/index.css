@@ -2214,3 +2214,11 @@ a {
   border-radius: 0 0 var(--radius) var(--radius);
   font-size: 13px;
 }
+
+/* Bouton de lancement, plus haut que les autres : on ne lance pas un tournoi
+   en passant le doigt sur un tableau qu'on est en train de pointer. */
+.btn-lg {
+  min-height: 52px;
+  padding: 0 24px;
+  font-size: 16px;
+}

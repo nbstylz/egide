@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { useTeamCheckIn, type TeamCheckInRow } from '../hooks/use-team-check-in';
+import { flushPushQueue } from '../lib/push';
 import { supabase } from '../lib/supabase';
 import { formatEventDateShort } from '../lib/tournaments';
 import { AdminReadOnlyBanner } from './admin-page-header';
+import { Modal } from './modal';
 import { Toast } from './toast';
 
 type Props = {
@@ -12,6 +14,7 @@ type Props = {
   tournamentName: string;
   eventDate: string;
   city: string;
+  teamSize: number;
   /** Le pointage n'est ouvert que tant que le tournoi n'est pas lancé. */
   editable: boolean;
   readOnly?: boolean;
@@ -46,14 +49,20 @@ export function TeamCheckIn({
   tournamentName,
   eventDate,
   city,
+  teamSize,
   editable,
   readOnly,
   organizerPseudo,
   base,
 }: Props) {
+  const navigate = useNavigate();
   const { rows, loading, error, refresh, setRows } = useTeamCheckIn(tournamentId);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [launchOpen, setLaunchOpen] = useState(false);
+  const [scenario, setScenario] = useState('');
+  const [launching, setLaunching] = useState(false);
+  const [launchFailed, setLaunchFailed] = useState(false);
 
   const engaged = useMemo(() => rows.filter((r) => r.status !== 'waitlisted'), [rows]);
   const presentTeams = engaged.filter((r) => r.status === 'checked_in').length;
@@ -85,6 +94,44 @@ export function TeamCheckIn({
           : r
       )
     );
+  }
+
+  /**
+   * Lance le tournoi. La modale nomme les équipes qui seront écartées : une
+   * équipe pointée par erreur se rattrape, une équipe oubliée ne se rattrape
+   * plus une fois la ronde 1 générée.
+   */
+  async function launch() {
+    if (!supabase) return;
+    setLaunching(true);
+    setLaunchFailed(false);
+    const { error: dbError } = await supabase.rpc('start_tournament', {
+      p_tournament_id: tournamentId,
+    });
+    if (dbError) {
+      setLaunching(false);
+      setLaunchFailed(true);
+      return;
+    }
+    // Le scénario saisi doit survivre au trajet vers la page Rondes.
+    if (scenario.trim() !== '') {
+      const { data: round } = await supabase
+        .from('rounds')
+        .select('id')
+        .eq('tournament_id', tournamentId)
+        .eq('number', 1)
+        .maybeSingle<{ id: string }>();
+      if (round) {
+        await supabase.rpc('set_round_scenario', {
+          p_round_id: round.id,
+          p_scenario: scenario.trim(),
+        });
+      }
+    }
+    setLaunching(false);
+    setLaunchOpen(false);
+    flushPushQueue();
+    navigate(`${base}/rondes`);
   }
 
   if (loading) {
@@ -201,6 +248,74 @@ export function TeamCheckIn({
           );
         })}
       </div>
+
+      {editable ? (
+        <div className="checkin-launch">
+          <button
+            className="btn btn-primary btn-lg"
+            disabled={presentTeams < 2}
+            onClick={() => setLaunchOpen(true)}>
+            Lancer le tournoi
+          </button>
+          <div className="stat-label">
+            {presentTeams < 2
+              ? 'Il faut au moins deux équipes présentes pour lancer.'
+              : `${Math.floor(presentTeams / 2)} rencontre${
+                  Math.floor(presentTeams / 2) > 1 ? 's' : ''
+                } · ${Math.floor(presentTeams / 2) * teamSize} table${
+                  Math.floor(presentTeams / 2) * teamSize > 1 ? 's' : ''
+                }${presentTeams % 2 === 1 ? ' · une équipe aura le bye' : ''}`}
+          </div>
+        </div>
+      ) : null}
+
+      {launchOpen ? (
+        <Modal
+          title="Lancer le tournoi ?"
+          onClose={() => setLaunchOpen(false)}
+          locked={launching}>
+          <p>
+            {presentTeams} équipe{presentTeams > 1 ? 's' : ''} présente
+            {presentTeams > 1 ? 's' : ''} seront appariées sur{' '}
+            {Math.floor(presentTeams / 2) * teamSize} table
+            {Math.floor(presentTeams / 2) * teamSize > 1 ? 's' : ''}. Les tables de chaque
+            rencontre sont composées dans l’ordre des rosters.
+          </p>
+          {engaged.length - presentTeams > 0 ? (
+            <p className="banner banner-info banner-info-danger">
+              {engaged
+                .filter((r) => r.status !== 'checked_in')
+                .map((r) => r.team_name)
+                .join(', ')}{' '}
+              {engaged.length - presentTeams > 1 ? 'ne seront pas' : 'ne sera pas'} du tournoi :
+              {engaged.length - presentTeams > 1 ? ' elles ne sont pas pointées' : ' elle n’est pas pointée'}.
+            </p>
+          ) : null}
+          <label>
+            Scénario de la ronde 1 <span className="stat-label">(facultatif)</span>
+            <input
+              className="input"
+              value={scenario}
+              onChange={(event) => setScenario(event.target.value)}
+              placeholder="Ex. Prise de position"
+              disabled={launching}
+            />
+          </label>
+          {launchFailed ? (
+            <p className="field-error">
+              Le lancement a échoué. Vérifiez votre connexion, puis réessayez.
+            </p>
+          ) : null}
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setLaunchOpen(false)} disabled={launching}>
+              Revenir au pointage
+            </button>
+            <button className="btn btn-primary" onClick={launch} disabled={launching}>
+              {launching ? 'Lancement…' : 'Lancer le tournoi'}
+            </button>
+          </div>
+        </Modal>
+      ) : null}
 
       {toast ? <Toast message={toast} variant="danger" onDone={() => setToast(null)} /> : null}
     </>

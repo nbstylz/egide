@@ -314,6 +314,7 @@ export function CheckInPage({
         tournamentName={tournament.name}
         eventDate={tournament.event_date}
         city={tournament.city}
+        teamSize={tournament.team_size ?? 0}
         editable={tournament.status === 'open' && !readOnly}
         readOnly={readOnly}
         organizerPseudo={organizerPseudo}
