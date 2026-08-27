@@ -2199,3 +2199,18 @@ a {
 .faction-select:disabled {
   opacity: 0.6;
 }
+
+/* Pointage par équipe (US-7.4) : la ligne d'équipe réutilise .checkin-row, et
+   les avertissements — roster incomplet, faction manquante — se posent sous
+   elle plutôt qu'à côté. Ils doivent se lire avant de pointer, pas après. */
+.team-checkin-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.team-checkin-note {
+  margin: 0 0 8px;
+  border-radius: 0 0 var(--radius) var(--radius);
+  font-size: 13px;
+}

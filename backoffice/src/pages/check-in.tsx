@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { AdminReadOnlyBanner } from '../components/admin-page-header';
+import { TeamCheckIn } from '../components/team-check-in';
 import { LaunchTournamentModal } from '../components/launch-tournament-modal';
 import { Modal } from '../components/modal';
 import { Toast } from '../components/toast';
@@ -300,6 +301,24 @@ export function CheckInPage({
         </p>
         <Link to={`${base}`}>Retour au tournoi</Link>
       </div>
+    );
+  }
+
+  // Un tournoi par équipes se pointe par équipe : une équipe se présente à
+  // l'accueil ensemble. Le pointage individuel reste la brique de base, appelé
+  // en lot par la base — cet écran ne le double pas.
+  if (tournament.type === 'team' && tournament.status !== 'cancelled') {
+    return (
+      <TeamCheckIn
+        tournamentId={tournament.id}
+        tournamentName={tournament.name}
+        eventDate={tournament.event_date}
+        city={tournament.city}
+        editable={tournament.status === 'open' && !readOnly}
+        readOnly={readOnly}
+        organizerPseudo={organizerPseudo}
+        base={base}
+      />
     );
   }
 
