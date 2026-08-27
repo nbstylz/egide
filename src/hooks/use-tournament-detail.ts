@@ -19,16 +19,40 @@ export type RegistrationRow = {
   dropped_round: number | null;
   /** Faction déclarée pour ce tournoi (US-9.3), ou null. */
   faction: string | null;
+  /** Inscription d'équipe dont ce joueur fait partie (US-7.2), ou null. */
+  team_registration_id: string | null;
+  /** Rang dans le roster (1..N), null en tournoi individuel. */
+  roster_position: number | null;
   profile: { pseudo: string; faction_favorite: string | null } | null;
+};
+
+/** Une équipe engagée dans un tournoi par équipes. */
+export type TeamRegistrationRow = {
+  id: string;
+  team_id: string;
+  captain_id: string;
+  status: RegistrationStatus;
+  created_at: string;
+  promoted_at: string | null;
+  team: { name: string; region: string | null } | null;
+};
+
+/** Une équipe engagée, accompagnée de son roster ordonné. */
+export type EngagedTeam = TeamRegistrationRow & {
+  roster: RegistrationRow[];
 };
 
 export type TournamentDetail = Tournament & {
   organizer: { pseudo: string } | null;
   registrations: RegistrationRow[];
+  team_registrations: TeamRegistrationRow[];
 };
 
-/** Ordre d'arrivée : c'est lui qui fait la file d'attente. */
-function byArrival(a: RegistrationRow, b: RegistrationRow) {
+/**
+ * Ordre d'arrivée : c'est lui qui fait la file d'attente. Vaut pour un joueur
+ * comme pour une équipe — seule la date d'inscription est lue.
+ */
+function byArrival(a: { created_at: string }, b: { created_at: string }) {
   return a.created_at.localeCompare(b.created_at);
 }
 
@@ -69,7 +93,7 @@ export function useTournamentDetail(tournamentId: string | undefined, userId: st
     const { data } = await supabase
       .from('tournaments')
       .select(
-        '*, organizer:profiles(pseudo), registrations(id, player_id, status, created_at, promoted_at, dropped_round, faction, profile:profiles(pseudo, faction_favorite))'
+        '*, organizer:profiles(pseudo), registrations(id, player_id, status, created_at, promoted_at, dropped_round, faction, team_registration_id, roster_position, profile:profiles(pseudo, faction_favorite)), team_registrations(id, team_id, captain_id, status, created_at, promoted_at, team:teams(name, region))'
       )
       .eq('id', tournamentId)
       .maybeSingle<TournamentDetail>();
@@ -89,13 +113,46 @@ export function useTournamentDetail(tournamentId: string | undefined, userId: st
     .sort(byPseudo);
   const waitlisted = all.filter((r) => r.status === 'waitlisted').sort(byArrival);
 
+  // Les équipes engagées, chacune avec son roster ordonné. Le roster vient des
+  // mêmes lignes `registrations` que tout le reste : il n'y a pas deux vérités.
+  const allTeams = tournament?.team_registrations ?? [];
+  const rosterOf = (teamRegistrationId: string) =>
+    all
+      .filter((r) => r.team_registration_id === teamRegistrationId)
+      .sort((a, b) => (a.roster_position ?? 0) - (b.roster_position ?? 0));
+
+  const engagedTeams: EngagedTeam[] = allTeams
+    .filter((t) => ActiveRegistrationStatuses.includes(t.status))
+    .sort(byArrival)
+    .map((t) => ({ ...t, roster: rosterOf(t.id) }));
+  const waitlistedTeams: EngagedTeam[] = allTeams
+    .filter((t) => t.status === 'waitlisted')
+    .sort(byArrival)
+    .map((t) => ({ ...t, roster: rosterOf(t.id) }));
+
   const myRegistration = userId ? (all.find((r) => r.player_id === userId) ?? null) : null;
+  // Mon équipe engagée : celle dont je fais partie, capitaine ou non.
+  const myTeamRegistration =
+    myRegistration?.team_registration_id
+      ? ([...engagedTeams, ...waitlistedTeams].find(
+          (t) => t.id === myRegistration.team_registration_id
+        ) ?? null)
+      : null;
   const isOrganizer = Boolean(userId && tournament && tournament.organizer_id === userId);
-  const isFull = Boolean(tournament && registered.length >= tournament.capacity);
+  // La capacité d'un tournoi par équipes se compte en équipes (0041) : compter
+  // les joueurs y afficherait « 36 / 12 ».
+  const isTeamTournament = tournament?.type === 'team';
+  const takenSlots = isTeamTournament ? engagedTeams.length : registered.length;
+  const isFull = Boolean(tournament && takenSlots >= tournament.capacity);
 
   // Position dans la file d'attente, à partir de 1 (null si non concerné).
-  const myWaitlistPosition =
-    myRegistration?.status === 'waitlisted'
+  // En tournoi par équipes, c'est la place de l'équipe qui compte : une équipe
+  // attend en entier, ses trois joueurs n'ont pas trois positions.
+  const myWaitlistPosition = isTeamTournament
+    ? myTeamRegistration?.status === 'waitlisted'
+      ? waitlistedTeams.findIndex((t) => t.id === myTeamRegistration.id) + 1
+      : null
+    : myRegistration?.status === 'waitlisted'
       ? waitlisted.findIndex((r) => r.id === myRegistration.id) + 1
       : null;
 
@@ -106,6 +163,12 @@ export function useTournamentDetail(tournamentId: string | undefined, userId: st
     registered,
     waitlisted,
     registeredCount: registered.length,
+    engagedTeams,
+    waitlistedTeams,
+    myTeamRegistration,
+    isTeamTournament,
+    /** Places occupées, dans l'unité du tournoi : joueurs, ou équipes. */
+    takenSlots,
     myRegistration,
     myWaitlistPosition,
     isOrganizer,

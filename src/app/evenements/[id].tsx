@@ -37,6 +37,7 @@ import {
 import { useArmyList } from '@/hooks/use-army-list';
 import { useFactionDeclaration } from '@/hooks/use-faction-declaration';
 import { useMyPairing } from '@/hooks/use-my-pairing';
+import { useMyTeam } from '@/hooks/use-my-team';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
 import { useTournamentDetail, visibleSlice } from '@/hooks/use-tournament-detail';
@@ -58,6 +59,9 @@ export default function EvenementDetailScreen() {
 
   const { session, loading: sessionLoading } = useSession();
   const { profile } = useProfile(session?.user.id);
+  // Un joueur n'a qu'une équipe : il n'y a rien à choisir, seulement à savoir
+  // s'il la capitaine.
+  const { team: myTeam } = useMyTeam(session?.user.id);
   const {
     tournament,
     loading,
@@ -65,6 +69,11 @@ export default function EvenementDetailScreen() {
     registered,
     waitlisted,
     registeredCount,
+    engagedTeams,
+    waitlistedTeams,
+    myTeamRegistration,
+    isTeamTournament,
+    takenSlots,
     myRegistration,
     myWaitlistPosition,
     isOrganizer,
@@ -139,9 +148,18 @@ export default function EvenementDetailScreen() {
   }
 
   function askWithdraw() {
-    const title = isWaitlisted ? 'Quitter la liste d’attente ?' : 'Se désinscrire ?';
+    const title = myTeamRegistration
+      ? 'Te retirer du roster ?'
+      : isWaitlisted
+        ? 'Quitter la liste d’attente ?'
+        : 'Se désinscrire ?';
     let message;
-    if (isWaitlisted) {
+    if (myTeamRegistration) {
+      const teamSize = tournament?.team_size ?? 0;
+      message = `Ton équipe passera à ${myTeamRegistration.roster.length - 1} joueur${
+        myTeamRegistration.roster.length - 1 > 1 ? 's' : ''
+      } sur ${teamSize} et ne pourra pas être appariée tant que le capitaine n’a pas complété le roster.`;
+    } else if (isWaitlisted) {
       message = `Tu perdras ta position (${ordinalFr(myWaitlistPosition ?? 1)}). Si tu reviens, tu repartiras en fin de liste.`;
     } else if (waitlisted.length > 0) {
       message = 'Ta place sera attribuée au 1er joueur de la liste d’attente.';
@@ -161,7 +179,7 @@ export default function EvenementDetailScreen() {
       Alert.alert(title, message, [
         { text: 'Annuler', style: 'cancel' },
         {
-          text: isWaitlisted ? 'Quitter' : 'Se désinscrire',
+          text: myTeamRegistration ? 'Me retirer' : isWaitlisted ? 'Quitter' : 'Se désinscrire',
           style: 'destructive',
           onPress: () => handleWithdraw(),
         },
@@ -328,6 +346,82 @@ export default function EvenementDetailScreen() {
           <ThemedText style={[styles.buttonPrimaryText, { color: OnTint[mode] }]}>Créer mon profil</ThemedText>
         </Pressable>
       );
+    } else if (isTeamTournament) {
+      // Un tournoi par équipes ne s'inscrit pas joueur par joueur : c'est le
+      // capitaine qui engage, et l'équipe entre ou attend en entier.
+      const isCaptain = Boolean(myTeam && myTeam.captain_id === session.user.id);
+      const teamName = myTeamRegistration?.team?.name;
+      if (myTeamRegistration) {
+        message = (
+          <View style={styles.confirmRow}>
+            <Ionicons name="checkmark-circle" size={18} color={GreenColor[mode]} />
+            <ThemedText type="smallBold" style={{ color: GreenColor[mode] }}>
+              {myTeamRegistration.status === 'waitlisted'
+                ? `${teamName} est en liste d’attente`
+                : `Inscrit avec ${teamName}`}
+            </ThemedText>
+          </View>
+        );
+        if (isCaptain) {
+          button = (
+            <Pressable
+              style={secondaryStyle}
+              onPress={() =>
+                router.push({ pathname: '/evenements/[id]/inscrire-equipe', params: { id } })
+              }>
+              <ThemedText>Modifier le roster</ThemedText>
+            </Pressable>
+          );
+        } else {
+          button = (
+            <Pressable style={secondaryStyle} disabled={busy} onPress={askWithdraw}>
+              {busy ? (
+                <ActivityIndicator color={colors.tint} />
+              ) : (
+                <ThemedText style={{ color: RedColor[mode] }}>
+                  {confirmingWithdraw ? 'Confirmer mon retrait' : 'Me retirer du roster'}
+                </ThemedText>
+              )}
+            </Pressable>
+          );
+        }
+      } else if (isCaptain) {
+        button = (
+          <Pressable
+            style={primaryStyle}
+            onPress={() =>
+              router.push({ pathname: '/evenements/[id]/inscrire-equipe', params: { id } })
+            }>
+            <ThemedText style={[styles.buttonPrimaryText, { color: OnTint[mode] }]}>
+              {isFull ? 'Mettre mon équipe en liste d’attente' : 'Inscrire mon équipe'}
+            </ThemedText>
+          </Pressable>
+        );
+      } else if (myTeam) {
+        message = (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.ctaMessage}>
+            Seul le capitaine inscrit l’équipe à un tournoi.
+          </ThemedText>
+        );
+        button = (
+          <Pressable
+            style={secondaryStyle}
+            onPress={() => router.push({ pathname: '/equipes/[id]', params: { id: myTeam.id } })}>
+            <ThemedText>Voir mon équipe</ThemedText>
+          </Pressable>
+        );
+      } else {
+        message = (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.ctaMessage}>
+            Ce tournoi se joue en équipe. Rejoins une équipe avec le code de son capitaine.
+          </ThemedText>
+        );
+        button = (
+          <Pressable style={secondaryStyle} onPress={() => router.push('/(tabs)/equipes')}>
+            <ThemedText>Aller aux équipes</ThemedText>
+          </Pressable>
+        );
+      }
     } else if (isCheckedIn) {
       message = registeredLine;
     } else if (isRegistered) {
@@ -440,8 +534,10 @@ export default function EvenementDetailScreen() {
       </View>
     );
   } else {
-    const remaining = tournament.capacity - registeredCount;
-    const fillPercent = Math.min(100, Math.round((registeredCount / tournament.capacity) * 100));
+    // Un tournoi par équipes compte des équipes : afficher « 36 / 12 » ferait
+    // croire à un dépassement.
+    const remaining = tournament.capacity - takenSlots;
+    const fillPercent = Math.min(100, Math.round((takenSlots / tournament.capacity) * 100));
     const visibleRegistered = visibleSlice(registered, InlineRegisteredLimit, session?.user.id);
     const visibleWaitlist = visibleSlice(waitlisted, InlineWaitlistLimit, session?.user.id);
     const showPromotion = Boolean(myRegistration?.promoted_at) && !promotionSeen && isRegistered;
@@ -655,10 +751,10 @@ export default function EvenementDetailScreen() {
           <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
             <View style={styles.participantsHeader}>
               <ThemedText type="small" themeColor="textSecondary">
-                Inscrits
+                {isTeamTournament ? 'Équipes engagées' : 'Inscrits'}
               </ThemedText>
               <ThemedText type="smallBold">
-                {registeredCount} / {tournament.capacity}
+                {takenSlots} / {tournament.capacity}
               </ThemedText>
             </View>
             <View style={[styles.progressTrack, { backgroundColor: colors.backgroundSelected }]}>
@@ -672,6 +768,9 @@ export default function EvenementDetailScreen() {
             {remaining > 0 ? (
               <ThemedText type="small" themeColor="textSecondary">
                 {remaining} {remaining > 1 ? 'places restantes' : 'place restante'}
+                {isTeamTournament
+                  ? ` · ${registeredCount} joueur${registeredCount > 1 ? 's' : ''} engagé${registeredCount > 1 ? 's' : ''}`
+                  : ''}
               </ThemedText>
             ) : (
               <ThemedText type="small">
@@ -688,11 +787,54 @@ export default function EvenementDetailScreen() {
             <View style={[styles.divider, { backgroundColor: colors.backgroundSelected }]} />
 
             <ThemedText type="small" themeColor="textSecondary">
-              Joueurs inscrits
+              {isTeamTournament ? 'Rosters engagés' : 'Joueurs inscrits'}
             </ThemedText>
 
             {!session ? (
               renderLockedList()
+            ) : isTeamTournament ? (
+              engagedTeams.length === 0 ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {tournament.status === 'open'
+                    ? 'Aucune équipe engagée pour l’instant.'
+                    : 'Aucune équipe engagée.'}
+                </ThemedText>
+              ) : (
+                <View style={styles.playerList}>
+                  {engagedTeams.map((engaged) => (
+                    <View
+                      key={engaged.id}
+                      style={[styles.teamBlock, { backgroundColor: colors.background }]}>
+                      <View style={styles.confirmRow}>
+                        <ThemedText type="smallBold" numberOfLines={1} style={styles.teamName}>
+                          {engaged.team?.name ?? 'Équipe'}
+                        </ThemedText>
+                        {engaged.id === myTeamRegistration?.id ? (
+                          <View style={[styles.chip, { backgroundColor: colors.tint }]}>
+                            <ThemedText type="small" style={{ color: OnTint[mode] }}>
+                              ton équipe
+                            </ThemedText>
+                          </View>
+                        ) : null}
+                      </View>
+                      {/* Les pseudos du roster, dans l'ordre. La faction se lit
+                          sur la liste complète des inscrits : ici, c'est la
+                          composition qu'on vient vérifier. */}
+                      <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+                        {engaged.roster.map((r) => r.profile?.pseudo ?? 'Joueur').join(' · ')}
+                        {tournament.team_size && engaged.roster.length < tournament.team_size
+                          ? `  —  ${tournament.team_size - engaged.roster.length} place${
+                              tournament.team_size - engaged.roster.length > 1 ? 's' : ''
+                            } à combler`
+                          : ''}
+                      </ThemedText>
+                    </View>
+                  ))}
+                  {registered.length > 0
+                    ? renderSeeAll(`Voir les ${registered.length} joueurs inscrits`)
+                    : null}
+                </View>
+              )
             ) : registered.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary">
                 {tournament.status === 'open'
@@ -717,7 +859,7 @@ export default function EvenementDetailScreen() {
           </View>
 
           {/* Carte Liste d'attente */}
-          {waitlisted.length > 0 || isFull ? (
+          {(isTeamTournament ? waitlistedTeams.length > 0 : waitlisted.length > 0) || isFull ? (
             <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
               <View style={styles.participantsHeader}>
                 <View style={styles.confirmRow}>
@@ -726,13 +868,47 @@ export default function EvenementDetailScreen() {
                     Liste d’attente
                   </ThemedText>
                 </View>
-                <ThemedText type="smallBold">{waitlisted.length}</ThemedText>
+                <ThemedText type="smallBold">
+                  {isTeamTournament ? waitlistedTeams.length : waitlisted.length}
+                </ThemedText>
               </View>
               <ThemedText type="small" themeColor="textSecondary">
-                Dès qu’une place se libère, le premier de la liste est inscrit automatiquement.
+                {isTeamTournament
+                  ? 'Dès qu’une place se libère, la première équipe de la liste est inscrite automatiquement, avec tout son roster.'
+                  : 'Dès qu’une place se libère, le premier de la liste est inscrit automatiquement.'}
               </ThemedText>
 
-              {waitlisted.length === 0 ? (
+              {isTeamTournament ? (
+                waitlistedTeams.length === 0 ? (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Aucune équipe n’attend pour l’instant.
+                  </ThemedText>
+                ) : (
+                  <View style={styles.playerList}>
+                    {waitlistedTeams.map((engaged, index) => (
+                      <View
+                        key={engaged.id}
+                        style={[styles.teamBlock, { backgroundColor: colors.background }]}>
+                        <View style={styles.confirmRow}>
+                          <ThemedText type="smallBold" style={{ color: colors.tint }}>
+                            {ordinalFr(index + 1)}
+                          </ThemedText>
+                          <ThemedText type="smallBold" numberOfLines={1} style={styles.teamName}>
+                            {engaged.team?.name ?? 'Équipe'}
+                          </ThemedText>
+                          {engaged.id === myTeamRegistration?.id ? (
+                            <View style={[styles.chip, { backgroundColor: colors.tint }]}>
+                              <ThemedText type="small" style={{ color: OnTint[mode] }}>
+                                ton équipe
+                              </ThemedText>
+                            </View>
+                          ) : null}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )
+              ) : waitlisted.length === 0 ? (
                 <ThemedText type="small" themeColor="textSecondary">
                   Personne n’attend pour l’instant.
                 </ThemedText>
@@ -878,6 +1054,18 @@ const styles = StyleSheet.create({
     height: 1,
     marginVertical: Spacing.one,
     marginHorizontal: -Spacing.three,
+  },
+  teamBlock: {
+    borderRadius: Spacing.two,
+    padding: Spacing.two,
+    gap: Spacing.half,
+  },
+  teamName: {
+    flexShrink: 1,
+  },
+  chip: {
+    borderRadius: 999,
+    paddingHorizontal: Spacing.one,
   },
   playerList: {
     gap: Spacing.two,
