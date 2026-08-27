@@ -114,8 +114,10 @@ avec son troisième mode de barre latérale sur les routes `/admin/*`.
 10. **Faction choisie dans une liste fermée** (2026-08-22), même remède que les régions et
     pour la même raison : « nighthaunt » et « Nighthaunt » ne se rencontraient jamais dans
     un regroupement. `src/lib/factions.ts` + `src/components/faction-picker.tsx`, branchés
-    sur la soumission de liste **et** sur le profil. **La liste des 28 factions reste à
-    valider par le porteur, expert AoS.**
+    sur la soumission de liste **et** sur le profil. **Liste validée le 27 août 2026** par
+    le porteur : 24 factions de 4e édition, Beasts of Chaos retirée (passée en Legends),
+    Helsmiths of Hashut ajoutée, et **aucune entrée « Autre »** — un fourre-tout se remplit
+    toujours, et une ligne « Autre » ne dit rien de personne dans une statistique.
 11. **Le pouvoir d'administration est vérifié par la base, jamais par l'interface.**
     `is_admin()` est la seule source de vérité ; masquer une entrée de menu n'est qu'un
     confort. Corollaire tenu partout : la lecture seule de l'admin est vraie en base — un
@@ -245,16 +247,13 @@ avec son troisième mode de barre latérale sur les routes `/admin/*`.
 
 ## 10. Prochaines étapes possibles
 
-**Trois décisions attendent le porteur — rien ne peut avancer proprement sans elles :**
+**Deux décisions attendent le porteur — rien ne peut avancer proprement sans elles :**
 
-1. **Valider la liste des 28 factions** (`src/lib/factions.ts`). Elle suit la 4e édition,
-   groupée par Grande Alliance ; personne d'autre que le porteur ne peut garantir qu'elle
-   est juste et complète.
-2. **Arbitrer l'US-9.3** proposée par l'agent `ux-ui` : déclarer sa faction directement sur
+1. **Arbitrer l'US-9.3** proposée par l'agent `ux-ui` : déclarer sa faction directement sur
    la fiche d'un tournoi, sans passer par une liste d'armée. Sans elle, la section
    « Factions jouées » restera anecdotique — le gros du trou de couverture vient des
    tournois qui ne demandent pas de liste.
-3. **Trancher le protocole d'appariement des capitaines** avant d'ouvrir l'EPIC-7 : l'US-7.4
+2. **Trancher le protocole d'appariement des capitaines** avant d'ouvrir l'EPIC-7 : l'US-7.4
    signale que l'ordre des choix et le tempo varient selon les formats.
 
 **Deux arbitrages hérités de l'EPIC-12 :** ouvrir ou non le contenu des listes d'armées à

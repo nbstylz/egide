@@ -13,9 +13,19 @@
  * l'exception assumée à la règle du français, comme « bye » ou « Grand
  * Alliance ».
  *
- * À faire vérifier par le porteur, expert AoS : cette liste suit la 4e
- * édition. Elle évoluera à chaque sortie de battletome — d'où le regroupement
- * par alliance, qui rend les ajouts évidents.
+ * Liste de la 4e édition, validée le 27 août 2026 par le porteur, expert AoS.
+ * Deux choix qui ne se lisent pas dans le tableau :
+ *
+ * - Beasts of Chaos n'y figure pas : la faction est passée en Legends et ne
+ *   s'aligne plus en tournoi. Proposer une armée injouable ferait mentir le
+ *   sélecteur sur ce qui peut réellement s'aligner.
+ * - Il n'y a pas d'entrée « Autre » : un fourre-tout se remplit toujours, et
+ *   une ligne « Autre » ne dit rien de personne dans une statistique. Une
+ *   armée absente doit se voir comme un manque à combler, pas se ranger dans
+ *   un tiroir.
+ *
+ * La liste évoluera à chaque sortie de battletome — d'où le regroupement par
+ * alliance, qui rend les ajouts évidents.
  */
 
 export const FactionsByAlliance = {
@@ -34,10 +44,10 @@ export const FactionsByAlliance = {
     'Blades of Khorne',
     'Disciples of Tzeentch',
     'Hedonites of Slaanesh',
+    'Helsmiths of Hashut',
     'Maggotkin of Nurgle',
     'Skaven',
     'Slaves to Darkness',
-    'Beasts of Chaos',
   ],
   Death: [
     'Flesh-eater Courts',
