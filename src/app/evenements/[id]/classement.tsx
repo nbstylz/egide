@@ -29,7 +29,9 @@ import {
 } from '@/constants/theme';
 import type { RoundInfo } from '@/hooks/use-my-pairing';
 import { useSession } from '@/hooks/use-session';
+import { SegmentedControl } from '@/components/segmented-control';
 import { useStandings, type StandingLine } from '@/hooks/use-standings';
+import { useTeamStandings } from '@/hooks/use-team-standings';
 import { ordinalFr } from '@/lib/ordinal';
 import { supabase } from '@/lib/supabase';
 import type { Tournament } from '@/lib/tournaments';
@@ -84,7 +86,14 @@ export default function ClassementScreen() {
   const [search, setSearch] = useState('');
   const [rulesOpen, setRulesOpen] = useState(false);
   const [myRowVisible, setMyRowVisible] = useState(true);
+  // Deux échelles, une seule page : deux écrans jumeaux se confondraient dans
+  // la navigation et doubleraient la modale des départages, pour répondre à la
+  // même question — « où j'en suis ». Le choix ne se mémorise pas : un onglet
+  // consulté trente secondes n'a pas de préférence à retenir.
+  const [tab, setTab] = useState('teams');
   const listRef = useRef<FlatList<StandingLine>>(null);
+
+  const [myTeamRegistrationId, setMyTeamRegistrationId] = useState<string | null>(null);
 
   const loadContext = useCallback(async () => {
     if (!supabase || !id) return;
@@ -93,14 +102,30 @@ export default function ClassementScreen() {
       supabase.from('rounds').select('id, number, status, scenario').eq('tournament_id', id),
     ]);
     setTournament(tournamentResult.data ?? null);
+    // Ma ligne d'équipe se met en évidence comme ma ligne de joueur : c'est la
+    // même question posée à une autre échelle.
+    if (userId) {
+      const { data: mine } = await supabase
+        .from('registrations')
+        .select('team_registration_id')
+        .eq('tournament_id', id)
+        .eq('player_id', userId)
+        .maybeSingle<{ team_registration_id: string | null }>();
+      setMyTeamRegistrationId(mine?.team_registration_id ?? null);
+    }
     setRoundsCount(((roundsResult.data as RoundInfo[]) ?? []).length);
     setContextLoading(false);
-  }, [id]);
+  }, [id, userId]);
 
   useEffect(() => {
     loadContext();
   }, [loadContext]);
 
+  const isTeamTournament = tournament?.type === 'team';
+  const { standings: teamStandings, loading: teamLoading } = useTeamStandings(
+    id,
+    isTeamTournament
+  );
   const completed = tournament?.status === 'completed';
   const myIndex = userId ? standings.findIndex((row) => row.player_id === userId) : -1;
   const myLine = myIndex >= 0 ? standings[myIndex] : null;
@@ -243,7 +268,8 @@ export default function ClassementScreen() {
     </View>
   );
 
-  const loading = standingsLoading || contextLoading;
+  const loading = standingsLoading || contextLoading || (isTeamTournament && teamLoading);
+  const showTeams = isTeamTournament && tab === 'teams';
   let content;
   if (loading) {
     content = (
@@ -272,6 +298,84 @@ export default function ClassementScreen() {
         </Pressable>
       </View>
     );
+  } else if (showTeams) {
+    content =
+      teamStandings.length === 0 ? (
+        <View style={styles.centered}>
+          <Ionicons name="people-outline" size={40} color={colors.textSecondary} />
+          <ThemedText type="smallBold" style={styles.centeredText}>
+            Le classement des équipes apparaîtra après la première rencontre terminée
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.centeredText}>
+            Une rencontre n’est comptée que lorsque toutes ses tables sont saisies.
+          </ThemedText>
+          <Pressable
+            style={({ pressed }) => [
+              styles.retryButton,
+              { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.8 : 1 },
+            ]}
+            onPress={() => setTab('players')}>
+            <ThemedText>Voir le classement des joueurs</ThemedText>
+          </Pressable>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.listContent}>
+          <MetaRow icon="podium-outline">
+            <ThemedText type="small" themeColor="textSecondary">
+              {completed
+                ? `${roundsCount} rondes jouées · ${teamStandings.length} équipes`
+                : `Après la ronde ${roundsCount} sur ${tournament?.rounds_count ?? roundsCount}`}
+            </ThemedText>
+          </MetaRow>
+          {teamStandings.map((team) => {
+            const isMine = team.team_registration_id === myTeamRegistrationId;
+            const topThree = !completed && team.rank <= 3;
+            return (
+              <View
+                key={team.team_registration_id}
+                style={[
+                  styles.teamRow,
+                  {
+                    backgroundColor: isMine ? TintBackground[mode] : colors.backgroundElement,
+                    borderColor: isMine ? TintBorder[mode] : 'transparent',
+                  },
+                ]}>
+                <View
+                  style={[
+                    styles.teamRank,
+                    {
+                      backgroundColor: topThree ? colors.tint : colors.backgroundSelected,
+                    },
+                  ]}>
+                  <ThemedText
+                    type="smallBold"
+                    style={{ color: topThree ? OnTint[mode] : colors.textSecondary }}>
+                    {team.rank}
+                  </ThemedText>
+                </View>
+                <View style={styles.teamIdentity}>
+                  <ThemedText type="smallBold" numberOfLines={1}>
+                    {team.team_name}
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                    {team.wins} – {team.draws} – {team.losses} · {team.table_wins} match
+                    {team.table_wins > 1 ? 's' : ''} gagné{team.table_wins > 1 ? 's' : ''}
+                  </ThemedText>
+                </View>
+                <View style={styles.teamScore}>
+                  <ThemedText type="smallBold">{winScoreFr(team.match_score)}</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {team.points_for} pts
+                  </ThemedText>
+                </View>
+              </View>
+            );
+          })}
+          <ThemedText type="small" themeColor="textSecondary" style={styles.centeredText}>
+            Une rencontre se gagne au plus grand total de points de partie.
+          </ThemedText>
+        </ScrollView>
+      );
   } else if (standings.length === 0) {
     content = (
       <View style={styles.centered}>
@@ -412,6 +516,18 @@ export default function ClassementScreen() {
             ) : null}
           </View>
         </View>
+        {isTeamTournament ? (
+          <View style={styles.tabs}>
+            <SegmentedControl
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: 'teams', label: 'Équipes' },
+                { value: 'players', label: 'Joueurs' },
+              ]}
+            />
+          </View>
+        ) : null}
         {content}
 
         {/* Les six départages, dans les mêmes termes que le back office.
@@ -687,6 +803,32 @@ const styles = StyleSheet.create({
   },
   centeredText: {
     textAlign: 'center',
+  },
+  tabs: {
+    paddingVertical: Spacing.one,
+  },
+  teamRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    minHeight: 64,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    marginBottom: RowGap,
+  },
+  teamRank: {
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  teamIdentity: {
+    flex: 1,
+  },
+  teamScore: {
+    alignItems: 'flex-end',
   },
   retryButton: {
     borderRadius: Spacing.two,

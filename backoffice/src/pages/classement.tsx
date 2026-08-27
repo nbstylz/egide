@@ -11,6 +11,7 @@ import {
   type Standing,
   type TieBreakerKey,
 } from '../hooks/use-standings';
+import { useTeamStandings } from '../hooks/use-team-standings';
 import { formatEventDateShort } from '../lib/tournaments';
 import { downloadCsv, slugForFile } from '../lib/export';
 
@@ -71,6 +72,12 @@ export function ClassementPage({
   adminView,
 }: Props) {
   const { standings, loading, error, refresh } = useStandings(tournament?.id);
+  // Deux échelles, une seule page : un tournoi par équipes a un vainqueur
+  // d'équipe ET un meilleur joueur. Effacer le second serait injuste envers
+  // qui fait cinq victoires sur cinq dans une équipe médiocre.
+  const isTeamTournament = tournament?.type === 'team';
+  const { standings: teamStandings } = useTeamStandings(tournament?.id, isTeamTournament);
+  const [tab, setTab] = useState('teams');
   const { rounds, pairings } = useRounds(tournament?.id);
 
   const [search, setSearch] = useState('');
@@ -454,6 +461,76 @@ export function ClassementPage({
         </div>
       </div>
 
+      {isTeamTournament ? (
+        <div className="segmented" style={{ marginBottom: 16, maxWidth: 320 }}>
+          <button className={tab === 'teams' ? 'active' : ''} onClick={() => setTab('teams')}>
+            Équipes
+          </button>
+          <button className={tab === 'players' ? 'active' : ''} onClick={() => setTab('players')}>
+            Individuel
+          </button>
+        </div>
+      ) : null}
+
+      {isTeamTournament && tab === 'teams' ? (
+        teamStandings.length === 0 ? (
+          <div className="empty-state">
+            <h2>Le classement des équipes apparaîtra après la première rencontre terminée</h2>
+            <p>
+              Une rencontre n’est comptée que lorsque toutes ses tables sont saisies : annoncer un
+              vainqueur sur deux tables sur trois serait raconter une histoire fausse.
+            </p>
+          </div>
+        ) : (
+          <table className="table table-static table-lg">
+            <thead>
+              <tr>
+                <th style={{ width: 64 }}>Rang</th>
+                <th>Équipe</th>
+                <th style={{ width: 72 }} title="Rencontres gagnées, un nul comptant pour une demi">
+                  Renc.
+                </th>
+                <th className="hide-narrow" style={{ width: 92 }}>
+                  Bilan
+                </th>
+                <th className="hide-narrow" style={{ width: 80 }} title="Matchs individuels gagnés">
+                  Matchs
+                </th>
+                <th style={{ width: 64 }} title="Points de partie cumulés">
+                  Pts
+                </th>
+                <th className="hide-narrow" style={{ width: 72 }}>
+                  Diff.
+                </th>
+                <th className="hide-narrow" style={{ width: 72 }} title="Force des adversaires">
+                  SoS
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {teamStandings.map((team) => (
+                <tr key={team.team_registration_id}>
+                  <td>
+                    <span className={`rank-cell${team.rank <= 3 ? ' top' : ''}`}>{team.rank}</span>
+                  </td>
+                  <td>
+                    <span className="cell-name">{team.team_name}</span>
+                    {team.region ? <div className="checkin-meta">{team.region}</div> : null}
+                  </td>
+                  <td>{num(team.match_score)}</td>
+                  <td className="hide-narrow">
+                    {team.wins} – {team.draws} – {team.losses}
+                  </td>
+                  <td className="hide-narrow">{team.table_wins}</td>
+                  <td>{team.points_for}</td>
+                  <td className="hide-narrow">{team.point_diff}</td>
+                  <td className="hide-narrow">{num(team.opponents_wins)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      ) : (
       <table className="table table-static table-lg">
         <thead>
           <tr>
@@ -573,10 +650,12 @@ export function ClassementPage({
           })}
         </tbody>
       </table>
+      )}
 
       <div className="field-hint" style={{ marginTop: 16 }}>
-        V : victoires (un nul vaut 0,5) · Pts : points marqués · Tac : tactiques · Diff :
-        différentiel · SoS : force des adversaires.
+        {isTeamTournament && tab === 'teams'
+          ? 'Renc. : rencontres gagnées (un nul vaut 0,5) · Matchs : matchs individuels gagnés, qui ne départagent pas · Pts : points de partie cumulés · Diff : différentiel · SoS : force des adversaires.'
+          : 'V : victoires (un nul vaut 0,5) · Pts : points marqués · Tac : tactiques · Diff : différentiel · SoS : force des adversaires.'}
       </div>
 
       <details className="details-section" open={roundsPlayed === 0}>

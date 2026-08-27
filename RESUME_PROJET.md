@@ -27,7 +27,7 @@ deux côtés (`lib/supabase.ts`, `lib/tournaments.ts`, `lib/ordinal.ts`, `hooks/
 
 ### Règle d'architecture centrale
 
-**La logique métier vit dans Postgres, pas dans le client.** 39 migrations numérotées et
+**La logique métier vit dans Postgres, pas dans le client.** 45 migrations numérotées et
 **immuables** dans `supabase/migrations/` — pour changer quoi que ce soit, on **ajoute** une
 migration `00NN_description.sql`, on n'édite jamais une existante. Les fonctions sont en
 `security definer` avec des `grant`/`revoke` explicites, appelées via `supabase.rpc(...)`.
@@ -54,7 +54,7 @@ Fonctions clés : `register_for_tournament`, `promote_waitlist`, `start_tourname
 ## 4. État d'avancement
 
 **Livré et testé : EPIC-1 à 6 (MVP phase 1), EPIC-12 (administration) et EPIC-9 (profil enrichi).**
-Migrations 0001 à 0039.
+Migrations 0001 à 0045.
 
 | EPIC | Contenu | État |
 |---|---|---|
@@ -65,6 +65,7 @@ Migrations 0001 à 0039.
 | 5 | Listes d'armées (texte + PDF, relecture organisateur) | Livré |
 | 6 | Notifications push | **Codé, réception non vérifiée** |
 | 9 | Profil enrichi : historique, factions jouées, **déclaration de faction** | Livré (2026-08-27) |
+| 7 | **Tournois par équipes** : US-7.1 à 7.6 livrées, 7.7 à 7.9 restantes | En cours (2026-08-27) |
 | 12 | Administration de la plateforme (6 US) | Livré (2026-08-22), validé en navigateur |
 
 Post-MVP livré par ailleurs : Circuit FR (+ page publique partageable), duplication de
@@ -265,9 +266,15 @@ avec son troisième mode de barre latérale sur les routes `/admin/*`.
 
 ## 10. Prochaines étapes possibles
 
-**Une décision attend le porteur — rien ne peut avancer proprement sans elle :**
+**Dix questions attendent le porteur sur l'EPIC-7** — toutes implémentées sous
+hypothèse par défaut, aucune bloquante : voir le tableau en tête de l'EPIC-7 dans
+`BACKLOG.md`. Les cinq premières (protocole d'appariement, effectif pair, issue
+d'une rencontre, départages d'équipe, bye d'équipe) méritent une relecture avant
+le premier vrai tournoi par équipes.
 
-1. **Trancher le protocole d'appariement des capitaines** avant d'ouvrir l'EPIC-7 : l'US-7.4
+**La décision qui reste vraiment ouverte :**
+
+1. **Confirmer le protocole d'appariement des capitaines** avant d'ouvrir l'EPIC-7 : l'US-7.4
    signale que l'ordre des choix et le tempo varient selon les formats.
 
 **Deux arbitrages hérités de l'EPIC-12 :** ouvrir ou non le contenu des listes d'armées à
