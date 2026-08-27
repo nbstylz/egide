@@ -73,7 +73,7 @@ export function CompleteTournamentModal({
           <div key={standing.player_id} style={{ padding: '2px 0' }}>
             {ordinal(standing.rank)} — <strong>{standing.pseudo}</strong>{' '}
             <span className="checkin-meta">
-              {standing.faction_favorite ? `(${standing.faction_favorite}) · ` : ''}
+              {standing.faction ? `(${standing.faction}) · ` : ''}
               {num(standing.win_score)} V · {standing.points_for} pts
             </span>
           </div>

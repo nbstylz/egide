@@ -92,7 +92,7 @@ export function InscritsPage({
       if (!needle) return true;
       const haystack = [
         registration.profile?.pseudo,
-        registration.profile?.faction_favorite,
+        registration.faction,
         registration.profile?.region,
       ]
         .filter(Boolean)
@@ -111,8 +111,8 @@ export function InscritsPage({
           sensitivity: 'base',
         });
       } else if (sortKey === 'faction') {
-        cmp = (a.profile?.faction_favorite ?? '').localeCompare(
-          b.profile?.faction_favorite ?? '',
+        cmp = (a.faction ?? '').localeCompare(
+          b.faction ?? '',
           'fr',
           { sensitivity: 'base' }
         );
@@ -360,7 +360,7 @@ export function InscritsPage({
                         <PlayerCell registration={registration} />
                       </td>
                       <td className="hide-narrow">
-                        {registration.profile?.faction_favorite ?? '—'}
+                        {registration.faction ?? '—'}
                       </td>
                       <td className="hide-narrow">{registration.profile?.region ?? '—'}</td>
                       <td className="hide-narrow" style={{ fontSize: 13 }}>
@@ -435,7 +435,7 @@ export function InscritsPage({
                             <PlayerCell registration={registration} />
                           </td>
                           <td className="hide-narrow">
-                            {registration.profile?.faction_favorite ?? '—'}
+                            {registration.faction ?? '—'}
                           </td>
                           <td className="hide-narrow">{registration.profile?.region ?? '—'}</td>
                           <td className="hide-narrow" style={{ fontSize: 13 }}>
@@ -476,7 +476,7 @@ export function InscritsPage({
                         <PlayerCell registration={registration} />
                       </td>
                       <td className="hide-narrow">
-                        {registration.profile?.faction_favorite ?? '—'}
+                        {registration.faction ?? '—'}
                       </td>
                       <td className="hide-narrow">{registration.profile?.region ?? '—'}</td>
                       <td className="hide-narrow" style={{ fontSize: 13 }}>

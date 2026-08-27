@@ -25,6 +25,11 @@ type Props = {
 /**
  * Une ligne de joueur : pastille (initiale ou rang), pseudo et faction.
  * Utilisée dans la fiche événement et dans l'écran complet des inscrits.
+ *
+ * La faction affichée est celle DÉCLARÉE pour ce tournoi (US-9.3), jamais la
+ * faction favorite du profil : celle-ci disait « ce que j'aime jouer », pas
+ * « ce que j'aligne aujourd'hui ». Rien ne s'affiche tant que rien n'est
+ * déclaré — mieux vaut ne rien montrer que raconter une histoire fausse.
  */
 export function PlayerRow({ registration, isMe, waitlistPosition, showCheckedIn }: Props) {
   const scheme = useColorScheme();
@@ -32,7 +37,7 @@ export function PlayerRow({ registration, isMe, waitlistPosition, showCheckedIn 
   const colors = Colors[mode];
 
   const pseudo = registration.profile?.pseudo ?? 'Joueur';
-  const faction = registration.profile?.faction_favorite;
+  const faction = registration.faction;
   const isWaitlist = waitlistPosition !== undefined;
 
   let badgeBackground: string = colors.backgroundSelected;

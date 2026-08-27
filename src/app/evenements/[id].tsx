@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ArmyListCard } from '@/components/army-list-card';
+import { PreparationCard, type FactionLock } from '@/components/preparation-card';
 import { JourJCard } from '@/components/jour-j-card';
 import { MetaRow } from '@/components/meta-row';
 import { MonParcours } from '@/components/mon-parcours';
@@ -35,10 +35,12 @@ import {
   TintBackground,
 } from '@/constants/theme';
 import { useArmyList } from '@/hooks/use-army-list';
+import { useFactionDeclaration } from '@/hooks/use-faction-declaration';
 import { useMyPairing } from '@/hooks/use-my-pairing';
 import { useProfile } from '@/hooks/use-profile';
 import { useSession } from '@/hooks/use-session';
 import { useTournamentDetail, visibleSlice } from '@/hooks/use-tournament-detail';
+import { matchFaction } from '@/lib/factions';
 import { ordinalFr } from '@/lib/ordinal';
 import { flushPushQueue, registerForPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
@@ -91,6 +93,18 @@ export default function EvenementDetailScreen() {
       refreshArmyList();
     }, [refreshArmyList])
   );
+
+  // Faction déclarée pour ce tournoi : l'écriture ne rafraîchit pas la fiche
+  // (cela remettrait `loading` à vrai et remplacerait tout l'écran par un
+  // indicateur de chargement à chaque choix).
+  const {
+    faction: myFaction,
+    saving: factionSaving,
+    saved: factionSaved,
+    error: factionError,
+    save: saveFaction,
+    retry: retryFaction,
+  } = useFactionDeclaration(id, myRegistration?.id, myRegistration?.faction ?? null);
 
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -434,6 +448,21 @@ export default function EvenementDetailScreen() {
     const showCheckedIn = tournament.status !== 'open';
 
     const isDropped = myRegistration?.status === 'dropped';
+    // Une liste validée engage la parole de l'organisation ; un tournoi lancé
+    // fige ce qui a déjà été annoncé aux adversaires — mais pas ce qui manque
+    // encore (« combler oui, réécrire non »).
+    const factionLock: FactionLock =
+      armyList?.status === 'approved'
+        ? 'list'
+        : tournament.status !== 'open' && myFaction
+          ? 'started'
+          : null;
+    // Proposée en raccourci seulement : jamais enregistrée sans un tap.
+    const favoriteFaction = matchFaction(profile?.faction_favorite);
+    // Les inscriptions sont déjà chargées : la faction d'un adversaire s'y lit
+    // sans un appel réseau de plus.
+    const factionOf = (playerId: string | null | undefined) =>
+      (playerId ? registered.find((r) => r.player_id === playerId)?.faction : null) ?? null;
     const showJourJ = tournament.status === 'in_progress' || tournament.status === 'completed';
     const tablesCount = pairings.filter((p) => p.player_b_id !== null).length;
 
@@ -519,15 +548,23 @@ export default function EvenementDetailScreen() {
             </View>
           ) : null}
 
-          {/* Ma liste d'armée : tant que les inscriptions sont ouvertes,
-              c'est la seule chose que le joueur inscrit a à faire ici. */}
+          {/* Ma préparation : faction et liste d'armée, les deux seules choses
+              que le joueur inscrit a à faire ici avant le jour J. */}
           {isRegistered && tournament.status === 'open' ? (
-            <ArmyListCard
+            <PreparationCard
               list={armyList}
               submissionsOpen
               onOpen={() =>
                 router.push({ pathname: '/evenements/[id]/liste', params: { id } })
               }
+              faction={myFaction}
+              favoriteFaction={favoriteFaction}
+              factionLock={factionLock}
+              onDeclareFaction={saveFaction}
+              factionSaving={factionSaving}
+              factionSaved={factionSaved}
+              factionError={factionError}
+              onRetryFaction={retryFaction}
             />
           ) : null}
 
@@ -542,6 +579,7 @@ export default function EvenementDetailScreen() {
                 userId={session?.user.id}
                 standings={standings}
                 tablesCount={tablesCount}
+                factionOf={factionOf}
                 loading={pairingLoading}
                 failed={pairingFailed}
                 refreshedAt={refreshedAt}
@@ -557,14 +595,24 @@ export default function EvenementDetailScreen() {
                 initiallyExpanded={tournament.status === 'completed' || isDropped}
                 droppedRound={isDropped ? (myRegistration?.dropped_round ?? null) : null}
               />
-              {/* Le tournoi est lancé : la liste n'est plus qu'une consultation. */}
-              {isRegistered ? (
-                <ArmyListCard
+              {/* Le tournoi est lancé : la liste n'est plus qu'une consultation,
+                  mais une faction absente peut encore être comblée. Un joueur
+                  qui a abandonné y a droit aussi : ses parties comptent. */}
+              {isRegistered || isDropped ? (
+                <PreparationCard
                   list={armyList}
                   submissionsOpen={false}
                   onOpen={() =>
                     router.push({ pathname: '/evenements/[id]/liste', params: { id } })
                   }
+                  faction={myFaction}
+                  favoriteFaction={favoriteFaction}
+                  factionLock={factionLock}
+                  onDeclareFaction={saveFaction}
+                  factionSaving={factionSaving}
+                  factionSaved={factionSaved}
+                  factionError={factionError}
+                  onRetryFaction={retryFaction}
                 />
               ) : null}
             </>

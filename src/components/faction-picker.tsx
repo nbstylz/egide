@@ -78,7 +78,7 @@ export function FactionPicker({
 
   return (
     <View style={styles.field}>
-      <ThemedText type="small">{label}</ThemedText>
+      {label ? <ThemedText type="small">{label}</ThemedText> : null}
       <Pressable
         disabled={disabled}
         onPress={() => setOpen(true)}

@@ -32,6 +32,13 @@ type Props = {
   refreshedAt: Date | null;
   onSeeTables: () => void;
   onSeeStandings: () => void;
+  /**
+   * Faction DÉCLARÉE d'un joueur pour ce tournoi (US-9.3). La carte ne la lit
+   * plus sur le profil : « ce que j'aime jouer » n'est pas « ce que j'aligne
+   * aujourd'hui », et se tromper d'armée face à son adversaire est le pire
+   * endroit où mentir.
+   */
+  factionOf: (playerId: string | null | undefined) => string | null;
 };
 
 /** « 15 – 5 » insécable : le score ne se coupe jamais en fin de ligne. */
@@ -65,6 +72,7 @@ export function JourJCard({
   refreshedAt,
   onSeeTables,
   onSeeStandings,
+  factionOf,
 }: Props) {
   const scheme = useColorScheme();
   const mode = scheme === 'dark' ? 'dark' : 'light';
@@ -310,6 +318,9 @@ export function JourJCard({
   if (myPairing) {
     const iAmA = myPairing.player_a_id === userId;
     const opponent = iAmA ? myPairing.player_b : myPairing.player_a;
+    // La faction annoncée pour CE tournoi, jamais la favorite du profil : se
+    // tromper d’armée face à son adversaire est le pire endroit où mentir.
+    const opponentFaction = factionOf(iAmA ? myPairing.player_b_id : myPairing.player_a_id);
     const compact = width < 360;
     return (
       <View
@@ -326,7 +337,7 @@ export function JourJCard({
         <View
           style={styles.matchRow}
           accessible
-          accessibilityLabel={`Ronde ${currentRound?.number} sur ${tournament.rounds_count}. Table ${myPairing.table_number}. Contre ${opponent?.pseudo ?? 'adversaire inconnu'}${opponent?.faction_favorite ? `, ${opponent.faction_favorite}` : ''}.`}>
+          accessibilityLabel={`Ronde ${currentRound?.number} sur ${tournament.rounds_count}. Table ${myPairing.table_number}. Contre ${opponent?.pseudo ?? 'adversaire inconnu'}${opponentFaction ? `, ${opponentFaction}` : ''}.`}>
           <View style={styles.matchLeft}>
             <ThemedText style={[styles.matchLabel, { color: colors.textSecondary }]}>
               TABLE
@@ -349,9 +360,9 @@ export function JourJCard({
             <ThemedText style={styles.opponentName} numberOfLines={2}>
               {opponent?.pseudo ?? 'Adversaire à venir'}
             </ThemedText>
-            {opponent?.faction_favorite ? (
+            {opponentFaction ? (
               <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                {opponent.faction_favorite}
+                {opponentFaction}
               </ThemedText>
             ) : null}
           </View>

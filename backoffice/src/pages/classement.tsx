@@ -231,7 +231,7 @@ export function ClassementPage({
     const rows = standings.map((s) => [
       s.rank,
       s.pseudo,
-      s.faction_favorite ?? '',
+      s.faction ?? '',
       num(s.win_score),
       s.wins,
       s.draws,
@@ -383,7 +383,7 @@ export function ClassementPage({
                 {standing.rank}
               </div>
               <div style={{ fontSize: 17, fontWeight: 700 }}>{standing.pseudo}</div>
-              <div className="checkin-meta">{standing.faction_favorite ?? '—'}</div>
+              <div className="checkin-meta">{standing.faction ?? '—'}</div>
               <div className="stat-label">
                 {num(standing.win_score)} V · {standing.points_for} pts
               </div>
@@ -526,7 +526,7 @@ export function ClassementPage({
                           {standing.dropped_round ? ` · R${standing.dropped_round}` : ''}
                         </span>
                       ) : (
-                        <span className="checkin-meta">{standing.faction_favorite ?? '—'}</span>
+                        <span className="checkin-meta">{standing.faction ?? '—'}</span>
                       )}
                     </span>
                   </div>

@@ -76,7 +76,7 @@ function CheckInRow({
       <span>
         <span className="checkin-name">{pseudo}</span>
         <br />
-        <span className="checkin-meta">{registration.profile?.faction_favorite ?? '—'}</span>
+        <span className="checkin-meta">{registration.faction ?? '—'}</span>
       </span>
       <span className={`checkin-state${present ? ' present' : ''}`}>
         {present ? 'Présent' : 'À pointer'}
@@ -148,7 +148,7 @@ export function CheckInPage({
     return registered.filter((r) => {
       if (needle) {
         const haystack = normalize(
-          `${r.profile?.pseudo ?? ''} ${r.profile?.faction_favorite ?? ''}`
+          `${r.profile?.pseudo ?? ''} ${r.faction ?? ''}`
         );
         if (!haystack.includes(needle)) return false;
       }
@@ -615,7 +615,7 @@ export function CheckInPage({
                       <span className="cell-name">{registration.profile?.pseudo}</span>
                     </div>
                   </td>
-                  <td className="hide-narrow">{registration.profile?.faction_favorite ?? '—'}</td>
+                  <td className="hide-narrow">{registration.faction ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

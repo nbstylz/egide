@@ -48,7 +48,7 @@ export default function InscritsScreen() {
     const matches = (registration: RegistrationRow) => {
       if (!needle) return true;
       const pseudo = registration.profile?.pseudo?.toLowerCase() ?? '';
-      const faction = registration.profile?.faction_favorite?.toLowerCase() ?? '';
+      const faction = registration.faction?.toLowerCase() ?? '';
       return pseudo.includes(needle) || faction.includes(needle);
     };
 

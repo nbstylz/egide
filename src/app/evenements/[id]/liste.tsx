@@ -289,7 +289,7 @@ export default function ListeArmeeScreen() {
               }}
               disabled={busy}
               error={factionError ? 'Indique ta faction.' : null}
-              hint="Ta faction alimente tes statistiques personnelles."
+              hint="Ta liste reste privée. Seule la faction est visible par les autres inscrits."
             />
           </View>
 

@@ -16,8 +16,8 @@ export type PairingInfo = {
   player_b_id: string | null;
   score_a: number | null;
   score_b: number | null;
-  player_a: { pseudo: string; faction_favorite: string | null } | null;
-  player_b: { pseudo: string; faction_favorite: string | null } | null;
+  player_a: { pseudo: string } | null;
+  player_b: { pseudo: string } | null;
 };
 
 /** Une ronde jouée, vue de mon côté de la table. */
@@ -91,7 +91,7 @@ export function useMyPairing(
         supabase
           .from('pairings')
           .select(
-            'id, table_number, player_a_id, player_b_id, score_a, score_b, player_a:profiles!pairings_player_a_id_fkey(pseudo, faction_favorite), player_b:profiles!pairings_player_b_id_fkey(pseudo, faction_favorite)'
+            'id, table_number, player_a_id, player_b_id, score_a, score_b, player_a:profiles!pairings_player_a_id_fkey(pseudo), player_b:profiles!pairings_player_b_id_fkey(pseudo)'
           )
           .eq('round_id', current.id)
           .order('table_number')

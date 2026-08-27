@@ -59,9 +59,12 @@ const isRealTable = (p: Pairing) => p.player_b !== null;
 /** Cellule joueur : initiale, pseudo et faction. */
 function PlayerCell({
   player,
+  faction,
   won,
 }: {
-  player: { pseudo: string; faction_favorite: string | null };
+  player: { pseudo: string };
+  /** Faction déclarée pour ce tournoi (US-9.3), jamais la favorite du profil. */
+  faction: string | null;
   won?: boolean;
 }) {
   return (
@@ -70,7 +73,7 @@ function PlayerCell({
       <span>
         <span className="cell-name">{player.pseudo}</span>
         <br />
-        <span className="checkin-meta">{player.faction_favorite ?? '—'}</span>
+        <span className="checkin-meta">{faction ?? '—'}</span>
       </span>
     </div>
   );
@@ -89,6 +92,10 @@ export function RondesPage({
   const { registered, loading: regLoading, refresh: refreshRegistrations } = useRegistrations(
     tournament?.id
   );
+  // Les inscriptions sont déjà chargées : la faction déclarée d'un joueur s'y
+  // lit sans requête de plus. « registered » couvre aussi les abandons.
+  const factionOf = (playerId: string | null) =>
+    (playerId ? registered.find((r) => r.player_id === playerId)?.faction : null) ?? null;
   const {
     rounds,
     pairings,
@@ -954,7 +961,11 @@ export function RondesPage({
                   </td>
                   <td>
                     {pairing.player_a ? (
-                      <PlayerCell player={pairing.player_a} won={winner === 'a'} />
+                      <PlayerCell
+                        player={pairing.player_a}
+                        faction={factionOf(pairing.player_a_id)}
+                        won={winner === 'a'}
+                      />
                     ) : (
                       '—'
                     )}
@@ -963,7 +974,11 @@ export function RondesPage({
                     {bye ? (
                       <span className="badge badge-bye">Exempt (bye)</span>
                     ) : (
-                      <PlayerCell player={pairing.player_b!} won={winner === 'b'} />
+                      <PlayerCell
+                        player={pairing.player_b!}
+                        faction={factionOf(pairing.player_b_id)}
+                        won={winner === 'b'}
+                      />
                     )}
                   </td>
                   <td className="cell-score">
@@ -1371,7 +1386,7 @@ export function RondesPage({
                             </span>
                           ) : (
                             <span className="checkin-meta">
-                              {registration.profile?.faction_favorite ?? '—'}
+                              {registration.faction ?? '—'}
                             </span>
                           )}
                         </span>
@@ -1538,7 +1553,7 @@ export function RondesPage({
                       <span className="cell-name">{registration.profile?.pseudo}</span>
                     </div>
                   </td>
-                  <td className="hide-narrow">{registration.profile?.faction_favorite ?? '—'}</td>
+                  <td className="hide-narrow">{registration.faction ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

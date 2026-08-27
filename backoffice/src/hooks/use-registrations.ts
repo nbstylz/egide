@@ -9,7 +9,9 @@ export type Registration = {
   status: RegistrationStatus;
   created_at: string;
   dropped_round: number | null;
-  profile: { pseudo: string; faction_favorite: string | null; region: string | null } | null;
+  /** Faction déclarée pour ce tournoi (US-9.3), ou null. */
+  faction: string | null;
+  profile: { pseudo: string; region: string | null } | null;
 };
 
 /** Ordre d'arrivée : il fait foi pour la liste d'attente. */
@@ -44,7 +46,7 @@ export function useRegistrations(tournamentId: string | undefined) {
     const { data, error: dbError } = await supabase
       .from('registrations')
       .select(
-        'id, player_id, status, created_at, dropped_round, profile:profiles(pseudo, faction_favorite, region)'
+        'id, player_id, status, created_at, dropped_round, faction, profile:profiles(pseudo, region)'
       )
       .eq('tournament_id', tournamentId);
     if (dbError) {

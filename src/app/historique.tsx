@@ -229,8 +229,8 @@ function FactionsSection({
       {known.length === 0 ? (
         <View style={[styles.factionEmpty, { backgroundColor: colors.backgroundElement }]}>
           <ThemedText type="small" themeColor="textSecondary">
-            Aucune faction connue pour l’instant. Elle est enregistrée avec ta liste d’armée :
-            dès ta prochaine liste soumise, ce tournoi apparaîtra ici.
+            Aucune faction enregistrée pour l’instant. Indique la faction jouée sur la fiche
+            d’un tournoi, section « Ma préparation » : ce bloc se remplira.
           </ThemedText>
         </View>
       ) : (
@@ -246,12 +246,10 @@ function FactionsSection({
             <FactionRow key={tally.faction ?? '—'} tally={tally} />
           ))}
           {covered < lines.length ? (
-            // La cause est extérieure au joueur : le dire lève le soupçon de
-            // reproche sans effort. Le champ est obligatoire à la soumission,
-            // donc l'absence ne vient presque jamais d'un oubli de sa part.
+            // Dire où combler, sans reprocher l'absence. La ligne d'historique
+            // mène déjà à la fiche du tournoi : le rattrapage tient en deux taps.
             <ThemedText type="small" themeColor="textSecondary">
-              La faction est enregistrée avec ta liste d’armée. Les tournois qui n’en
-              demandaient pas n’en ont pas.
+              La faction se renseigne sur la fiche du tournoi, section « Ma préparation ».
             </ThemedText>
           ) : null}
         </>

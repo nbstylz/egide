@@ -6,7 +6,8 @@ export type Standing = {
   rank: number;
   player_id: string;
   pseudo: string;
-  faction_favorite: string | null;
+  /** Faction déclarée pour ce tournoi (US-9.3), jamais la favorite du profil. */
+  faction: string | null;
   played: number;
   wins: number;
   draws: number;

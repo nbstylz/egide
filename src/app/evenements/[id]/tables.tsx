@@ -91,7 +91,7 @@ export default function TablesScreen() {
     const { data, error } = await supabase
       .from('pairings')
       .select(
-        'id, table_number, player_a_id, player_b_id, score_a, score_b, player_a:profiles!pairings_player_a_id_fkey(pseudo, faction_favorite), player_b:profiles!pairings_player_b_id_fkey(pseudo, faction_favorite)'
+        'id, table_number, player_a_id, player_b_id, score_a, score_b, player_a:profiles!pairings_player_a_id_fkey(pseudo), player_b:profiles!pairings_player_b_id_fkey(pseudo)'
       )
       .eq('round_id', selectedId)
       .order('table_number');

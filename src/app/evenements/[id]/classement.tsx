@@ -163,9 +163,9 @@ export default function ClassementScreen() {
                 Abandon
               </ThemedText>
             </View>
-          ) : row.faction_favorite ? (
+          ) : row.faction ? (
             <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-              {row.faction_favorite}
+              {row.faction}
             </ThemedText>
           ) : null}
         </View>
@@ -208,9 +208,9 @@ export default function ClassementScreen() {
               <ThemedText numberOfLines={2} style={styles.podiumPseudo}>
                 {row.pseudo}
               </ThemedText>
-              {row.faction_favorite ? (
+              {row.faction ? (
                 <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                  {row.faction_favorite}
+                  {row.faction}
                 </ThemedText>
               ) : null}
               <ThemedText style={[styles.podiumScore, { color: colors.textSecondary }]}>
