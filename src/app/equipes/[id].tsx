@@ -70,6 +70,9 @@ export default function EquipeDetailScreen() {
       </View>
     );
   } else {
+    const isMember = Boolean(
+      session && team.members.some((member) => member.player_id === session.user.id)
+    );
     content = (
       <ScrollView contentContainerStyle={styles.scroll}>
         <ThemedText type="subtitle">{team.name}</ThemedText>
@@ -80,6 +83,24 @@ export default function EquipeDetailScreen() {
         ) : null}
         {team.description ? (
           <ThemedText style={styles.description}>{team.description}</ThemedText>
+        ) : null}
+
+        {isMember ? (
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: '/equipes/[id]/discussion', params: { id: team.id } })
+            }
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.notice,
+              { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.8 : 1 },
+            ]}>
+            <Ionicons name="chatbubbles-outline" size={18} color={colors.tint} />
+            <ThemedText type="smallBold" style={styles.noticeText}>
+              Discussion de l’équipe
+            </ThemedText>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Pressable>
         ) : null}
 
         <ThemedText type="smallBold" style={styles.rosterHeading}>

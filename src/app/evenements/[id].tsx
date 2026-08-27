@@ -672,6 +672,28 @@ export default function EvenementDetailScreen() {
             />
           ) : null}
 
+          {(isRegistered || isDropped || isOrganizer) && tournament.status !== 'cancelled' ? (
+            <Pressable
+              onPress={() =>
+                router.push({ pathname: '/evenements/[id]/discussion', params: { id } })
+              }
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.card,
+                styles.linkCard,
+                { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.8 : 1 },
+              ]}>
+              <Ionicons name="chatbubbles-outline" size={18} color={colors.tint} />
+              <View style={styles.linkCardTexts}>
+                <ThemedText type="smallBold">Discussion</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Covoiturage, horaires, questions à l’organisation.
+                </ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </Pressable>
+          ) : null}
+
           {/* Le jour J : ma table, mon adversaire, mon parcours */}
           {showJourJ ? (
             <>
@@ -1111,6 +1133,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: Spacing.one,
   },
+  linkCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  linkCardTexts: { flex: 1 },
   playerList: {
     gap: Spacing.two,
   },

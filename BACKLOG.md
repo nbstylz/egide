@@ -583,9 +583,16 @@ L'agent `ux-ui` voulait l'appariement **sur un seul appareil** (celui de l'organ
 ## EPIC-8 — Chat (Phase 2)
 
 **Objectif :** messagerie d'équipe et fil de discussion par tournoi, avec modération.
-- **US-8.1** Fil de discussion par tournoi (inscrits + organisateur) — **L**.
-- **US-8.2** Messagerie d'équipe (membres du roster) — **M** — dép. EPIC-4.
-- **US-8.3** Modération : suppression de messages par l'organisateur/capitaine, signalement — **M**.
+- **US-8.1** Fil de discussion par tournoi (inscrits + organisateur) — **L**. — ✅ **Livrée (2026-08-27)**
+- **US-8.2** Messagerie d'équipe (membres du roster) — **M** — dép. EPIC-4. — ✅ **Livrée (2026-08-27)**
+- **US-8.3** Modération : suppression de messages par l'organisateur/capitaine, signalement — **M**. — ✅ **Livrée (2026-08-27)**
+  > Migrations 0048 et 0049. **Deux portées, une seule table** : une table par portée aurait dupliqué la modération, le signalement et la suppression douce — trois règles à tenir en double, dont deux touchent à la sécurité.
+  > **Pas de temps réel**, comme partout : on tire pour rafraîchir. Un fil de tournoi n'est pas une messagerie instantanée — il sert à demander une place de covoiturage et à savoir si l'événement est maintenu sous la neige.
+  > **RLS de lecture par appartenance** : le fil d'un tournoi se lit par ses inscrits et son organisation, celui d'une équipe par ses membres. Aucune lecture anonyme, et **aucune politique d'écriture** — une politique `insert` aurait laissé le client choisir son `author_id`.
+  > `thread_messages` renvoie un drapeau `can_delete` **calculé en base** : dupliquer les règles de modération côté client, ce serait deux copies d'une même règle qui finiraient par diverger.
+  > **Suppression douce** : le message garde sa place (une réponse qui suit un trou devient incompréhensible), et la modération reste auditable. La 0049 corrige un bug que l'assertion a attrapé — la contrainte de longueur interdisait de vider le corps. La correction vaut mieux que l'intention de départ : le texte est **conservé en base et masqué à la lecture**, donc un message supprimé juste après un signalement n'est pas perdu pour l'instruction. Corollaire assumé : le texte supprimé existe toujours ; une purge après N mois sera la suite logique.
+  > Le **signalement ne promet rien qu'aucun mécanisme ne tienne** : il pose une trace, il ne supprime pas et ne prévient personne automatiquement. Un signalement par personne et par message.
+  > 9 assertions SQL passées : non-inscrit refusé, non-membre refusé, deux portées à la fois refusées, message vide refusé, suppression par un tiers refusée, modération par l'organisateur, masquage à la lecture avec conservation en base, signalement idempotent.
 
 ## EPIC-9 — Profil enrichi et historique (Phase 2)
 
