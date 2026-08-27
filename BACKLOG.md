@@ -570,7 +570,11 @@ L'agent `ux-ui` voulait l'appariement **sur un seul appareil** (celui de l'organ
   > Le score de rencontre **se dit partiel quand il l'est** (« 96 – 74 · 1 table en cours »). Il est calculé table par table dans `use-my-encounter.ts` et non lu dans `team_encounter_results`, qui ne compte que les rencontres entièrement saisies pour ne pas fausser le classement : le joueur a le droit de voir un score partiel, à condition qu'on le lui dise.
   > L'écran des tables **groupe par rencontre** (« Rencontre 2 — Aubrac contre Les Corbeaux »), et la ligne du joueur reste dorée.
   > Accès à l'appariement capitaines depuis la fiche : « Apparier ma rencontre » pour le capitaine, « Suivre l'appariement » pour le reste du roster — voir son équipe choisir fait partie du tournoi.
-- **US-7.9** Historique et cohérence des résultats individuels — **S** — dép. US-7.6, US-7.8.
+- **US-7.9** Historique et cohérence des résultats individuels — **S** — dép. US-7.6, US-7.8. — ✅ **Livrée (2026-08-27)**
+  > Migration 0047 : `player_history` renvoie `tournament_type`, `team_name`, `team_rank`, `team_field_size`, et **null** comme rang individuel sur un tournoi par équipes. L'écran affiche « 1re / 12 » avec la mention « Par équipes · Aubrac ».
+  > Le **meilleur résultat** du profil ne mélange pas les deux échelles : les tournois par équipes alimentent le bilan (V-N-D, points) mais pas le podium personnel. Deux rangs qui ne mesurent pas la même chose ne se comparent pas.
+  > Le classement individuel d'un tournoi par équipes **existe toujours** et reste consultable sur la fiche : il n'est pas faux, il est incomparable. C'est une nuance, pas une suppression — une assertion le vérifie explicitement (6 joueurs classés).
+  > 3 assertions SQL passées.
   > Dans un tournoi par équipes, les appariements sont **négociés par les capitaines**, pas produits par le système suisse. Un « 3e sur 24 » y serait un rang obtenu sur des adversaires choisis : le classement individuel existe, mais **sans podium et sans « tu termines Ne »**. C'est « mieux vaut ne rien montrer que raconter une histoire fausse » appliqué à un rang.
 - **US-7.10** *(optionnelle, à arbitrer)* Listes visibles de l'équipe adverse — **M** — dép. US-7.7 et arbitrage du porteur.
 

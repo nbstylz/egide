@@ -29,8 +29,15 @@ export function HistoriqueRow({
   const mode = scheme === 'dark' ? 'dark' : 'light';
   const colors = Colors[mode];
 
-  const won = !line.dropped && line.rank === 1;
-  const topThree = !line.dropped && line.rank <= 3;
+  // Dans un tournoi par équipes, c'est le rang de l'ÉQUIPE qui s'affiche : le
+  // rang individuel y serait obtenu sur des adversaires choisis par les
+  // capitaines, et ne se compare à aucun autre (US-7.9).
+  const isTeam = line.tournament_type === 'team';
+  const shownRank = isTeam ? line.team_rank : line.rank;
+  const shownField = isTeam ? line.team_field_size : line.field_size;
+
+  const won = !line.dropped && shownRank === 1;
+  const topThree = !line.dropped && shownRank !== null && shownRank <= 3;
 
   // Le dénominateur recontextualise sans seuil arbitraire : un 3e sur 4 ne
   // doit pas ressembler à un 3e sur 40.
@@ -38,7 +45,11 @@ export function HistoriqueRow({
     `${line.name}, ${formatEventDateShort(line.event_date)} à ${line.city}. ` +
     (line.dropped
       ? `Abandon. `
-      : `${ordinalFr(line.rank)} sur ${line.field_size}. `) +
+      : shownRank === null || shownField === null
+        ? ''
+        : isTeam
+          ? `${ordinalFr(shownRank)} équipe sur ${shownField}, avec ${line.team_name ?? 'son équipe'}. `
+          : `${ordinalFr(shownRank)} sur ${shownField}. `) +
     `${line.wins} victoire${line.wins > 1 ? 's' : ''}, ${line.draws} nul${line.draws > 1 ? 's' : ''}, ` +
     `${line.losses} défaite${line.losses > 1 ? 's' : ''}, ${line.points_for} points.`;
 
@@ -63,11 +74,11 @@ export function HistoriqueRow({
         ]}>
         <ThemedText
           style={[styles.rankValue, { color: topThree ? colors.tint : colors.text }]}>
-          {line.dropped ? '—' : ordinalFr(line.rank)}
+          {line.dropped || shownRank === null ? '—' : ordinalFr(shownRank)}
         </ThemedText>
-        {line.dropped ? null : (
+        {line.dropped || shownField === null ? null : (
           <ThemedText type="small" themeColor="textSecondary" style={styles.rankTotal}>
-            / {line.field_size}
+            / {shownField}
           </ThemedText>
         )}
       </View>
@@ -79,6 +90,14 @@ export function HistoriqueRow({
           </ThemedText>
           {won ? <Ionicons name="trophy" size={14} color={colors.tint} /> : null}
         </View>
+
+        {line.tournament_type === 'team' ? (
+          <MetaRow icon="people-outline">
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+              Par équipes · {line.team_name ?? 'équipe inconnue'}
+            </ThemedText>
+          </MetaRow>
+        ) : null}
 
         <MetaRow icon="calendar-outline">
           <ThemedText type="smallBold">{formatEventDateShort(line.event_date)}</ThemedText>

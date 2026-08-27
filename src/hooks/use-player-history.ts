@@ -16,7 +16,12 @@ export type HistoryLine = {
   points_limit: number;
   /** Nombre de joueurs classés : un 3e sur 40 ne vaut pas un 3e sur 4. */
   field_size: number;
-  rank: number;
+  /**
+   * Rang individuel. **Null dans un tournoi par équipes** : les appariements y
+   * sont négociés par les capitaines, pas produits par le système suisse, et
+   * ce rang ne se compare donc à aucun autre (US-7.9).
+   */
+  rank: number | null;
   played: number;
   wins: number;
   draws: number;
@@ -24,8 +29,13 @@ export type HistoryLine = {
   points_for: number;
   points_against: number;
   dropped: boolean;
-  /** Faction déclarée sur la liste d'armée, ou null si aucune liste. */
+  /** Faction déclarée pour ce tournoi, ou null. */
   faction: string | null;
+  tournament_type: 'individual' | 'team';
+  /** Nom de l'équipe engagée, en tournoi par équipes. */
+  team_name: string | null;
+  team_rank: number | null;
+  team_field_size: number | null;
 };
 
 /**
@@ -95,6 +105,11 @@ export function summarize(history: HistoryLine[]): HistorySummary {
     summary.draws += line.draws;
     summary.losses += line.losses;
     if (line.dropped) continue;
+    // Un rang d'équipe ne se mélange pas à un rang individuel : ils ne
+    // mesurent pas la même chose et ne se comparent pas. Les tournois par
+    // équipes alimentent donc le bilan (victoires, nuls, défaites) mais pas le
+    // meilleur résultat. C'est le défaut retenu, à confirmer par le porteur.
+    if (line.rank === null) continue;
     if (summary.bestRank === null || line.rank < summary.bestRank) {
       summary.bestRank = line.rank;
     }
