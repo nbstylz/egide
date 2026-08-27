@@ -648,8 +648,12 @@ L'agent `ux-ui` voulait l'appariement **sur un seul appareil** (celui de l'organ
 ## EPIC-10 — Vérification poussée des listes (Phase 2)
 
 **Objectif :** parsing des listes, contrôle des points et de la légalité GHB — dans le respect de la propriété intellectuelle de Games Workshop (saisie communautaire ou imports à étudier, décision reportée conformément au cahier des charges).
-- **US-10.1** Étude de faisabilité juridique et technique (source des données de points) — **M**. **À instruire avant tout développement.**
-- **US-10.2+** À définir après US-10.1.
+- **US-10.1** Étude de faisabilité juridique et technique (source des données de points) — **M**. — ✅ **Instruite (2026-08-27)**, voir `ETUDE_LISTES.md`
+  > **Décision attendue du porteur** — l'étude instruit, elle ne tranche pas. Le point dur n'est pas technique : vérifier qu'une liste est légale suppose de connaître les **coûts en points**, qui appartiennent à Games Workshop.
+  > Le risque n'est pas symétrique : le pire cas n'est pas une amende mais un **retrait des stores**, qui emporterait toute l'application, tournois en cours compris. Une fonctionnalité de confort ne vaut pas ce risque.
+  > **Recommandation : livrer le niveau « addition vérifiée » (US-10.2) et s'arrêter là** tant que la question juridique n'est pas vérifiée à sa source actuelle. Il ne demande **aucune donnée de Games Workshop** — il vérifie la cohérence interne de ce que le joueur a écrit — et supprime l'erreur la plus fréquente en tournoi : une addition fausse ou une ligne oubliée.
+  > Condition impérative si l'US-10.2 est ouverte : **l'écran doit dire qu'il vérifie une addition, pas une légalité**. Promettre une vérification qu'on ne fait pas serait « raconter une histoire fausse » à l'endroit le plus coûteux — un joueur s'y fierait pour son tournoi.
+- **US-10.2** Addition vérifiée d'une liste (aucune donnée externe) — **M** — dép. arbitrage US-10.1. 📋 **Prête, en attente de décision.**
 
 ## EPIC-11 — Phase 3
 
@@ -659,14 +663,16 @@ L'agent `ux-ui` voulait l'appariement **sur un seul appareil** (celui de l'organ
   > **Tournois par équipes exclus** (appariements négociés, un ELO suppose des adversaires qu'on ne choisit pas), **bye et forfaits exclus**, **cinq parties minimum** pour apparaître — en dessous ce n'est pas un classement, c'est un tirage. Même famille de décision que le seuil du taux de victoire.
   > **Rien n'est stocké** : le calcul est rejoué dans l'ordre chronologique à chaque appel, donc un score corrigé par l'organisateur se répercute sans recalcul et sans divergence. Le jour où le volume l'exigera, ce sera un cache — pas une deuxième source de vérité.
   > 4 assertions SQL passées, dont la plus parlante : **la somme des écarts au socle est exactement nulle**, le système ne crée ni ne détruit de points.
-- **US-11.2** Carte interactive des événements — dép. EPIC-2.
+- **US-11.2** Carte interactive des événements — dép. EPIC-2. ⛔ **Bloquée : décision du porteur requise (dépendance native).**
+  > Une carte impose `react-native-maps` ou équivalent : une **dépendance native**, donc un development build, une clé d'API cartographique à gérer, et **rien qui fonctionne dans `npm run web`** — c'est-à-dire dans le seul environnement où ce projet se teste aujourd'hui. L'ajouter sans l'accord du porteur reviendrait à changer les conditions de développement du projet pour une fonctionnalité de confort.
+  > Alternative sans dépendance, si le besoin est « trouver un tournoi près de chez moi » : l'annuaire **filtre déjà par région** (US-2.5). Un tri par distance demanderait seulement les coordonnées des villes, sans carte.
 - **US-11.3** Statistiques méta (factions, taux de victoire) — dép. EPIC-9. — ✅ **Livrée (2026-08-27)**
   > Migration 0050 : `faction_meta_stats(depuis, région)` et `meta_coverage()`. Écran `/meta`, accessible depuis le Profil — après « ce que j'ai fait », « ce que font les autres ».
   > **C'est ici que revient le taux de victoire**, écarté du profil par la décision 13. Et c'est **la base qui décide**, faction par faction : sous 30 parties elle ne renvoie **aucun** taux, l'écran affiche les entiers et dit pourquoi. Le seuil vit à un seul endroit, l'écran ne peut pas afficher un chiffre que la base juge creux.
   > **Les tournois par équipes sont exclus** : leurs appariements sont négociés par les capitaines, un taux y mesurerait autant leur flair que la force d'une faction. Le bye et les forfaits ne comptent pas — sinon une faction paraîtrait forte d'avoir eu de la chance au tirage.
   > La couverture est affichée en tête (tournois, parties, joueurs, depuis quand) : sans ce cadre, un tableau de pourcentages laisse croire à une mesure établie là où il n'y a parfois que deux tournois.
   > 5 assertions SQL passées, dont : aucun taux sous le seuil, bye et forfaits écartés, filtre régional.
-- **US-11.4** Publication App Store + Play Store (comptes développeur, assets, review).
+- **US-11.4** Publication App Store + Play Store (comptes développeur, assets, review). ⛔ **Bloquée : comptes développeur du porteur.**
 
 ---
 
