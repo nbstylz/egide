@@ -11,6 +11,7 @@ import { DropPlayerModal } from '../components/drop-player-modal';
 import { LaunchTournamentModal } from '../components/launch-tournament-modal';
 import { Toast } from '../components/toast';
 import type { TournamentWithCount } from '../hooks/use-my-tournaments';
+import { TeamEncounters } from '../components/team-encounters';
 import { useRegistrations, type Registration } from '../hooks/use-registrations';
 import { useStandings } from '../hooks/use-standings';
 import { useRounds, type Pairing } from '../hooks/use-rounds';
@@ -916,6 +917,10 @@ export function RondesPage({
           )}
         </div>
       ) : (
+        <>
+        {tournament?.type === 'team' ? (
+          <TeamEncounters roundId={selectedRound?.id ?? null} editable={editable} />
+        ) : null}
         <table className="table table-static table-lg">
           <thead>
             <tr>
@@ -1187,6 +1192,7 @@ export function RondesPage({
             })}
           </tbody>
         </table>
+        </>
       )}
 
       {keptVisible > 0 && scoreFilter !== 'all' ? (

@@ -686,6 +686,26 @@ export default function EvenementDetailScreen() {
                   router.push({ pathname: '/evenements/[id]/classement', params: { id } })
                 }
               />
+              {/* L'appariement capitaines : le seul écran où un joueur agit le
+                  jour J. Ouvert à tout le roster en lecture — voir son équipe
+                  choisir fait partie du tournoi. */}
+              {isTeamTournament && myTeamRegistration ? (
+                <Pressable
+                  onPress={() =>
+                    router.push({ pathname: '/evenements/[id]/appariement', params: { id } })
+                  }
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.button,
+                    { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.8 : 1 },
+                  ]}>
+                  <ThemedText type="smallBold" style={{ color: colors.tint }}>
+                    {myTeam && myTeam.captain_id === session?.user.id
+                      ? 'Apparier ma rencontre'
+                      : 'Suivre l’appariement'}
+                  </ThemedText>
+                </Pressable>
+              ) : null}
               <MonParcours
                 results={myResults}
                 initiallyExpanded={tournament.status === 'completed' || isDropped}
