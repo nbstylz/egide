@@ -5,7 +5,7 @@ import { MetaRow } from '@/components/meta-row';
 import { StatusBadge } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
-import { formatEventDateShort, TypeLabels } from '@/lib/tournaments';
+import { formatEventDateShort, formatTypeLabel } from '@/lib/tournaments';
 import type { TournamentWithCount } from '@/hooks/use-tournaments';
 
 /** Vert « urgence positive » (peu de places restantes). */
@@ -134,7 +134,7 @@ export function EventCard({
           </ThemedText>
           <View style={[styles.typeBadge, { backgroundColor: colors.backgroundSelected }]}>
             <ThemedText themeColor="textSecondary" style={styles.typeBadgeText}>
-              {TypeLabels[tournament.type]}
+              {formatTypeLabel(tournament.type, tournament.team_size)}
             </ThemedText>
           </View>
         </View>

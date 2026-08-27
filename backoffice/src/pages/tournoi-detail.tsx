@@ -12,7 +12,7 @@ import {
   CancellableStatuses,
   EditableStatuses,
   formatEventDate,
-  TypeLabels,
+  formatTypeLabel,
 } from '../lib/tournaments';
 
 const PointsPresets = [1000, 1500, 2000];
@@ -171,7 +171,10 @@ export function TournoiDetailPage({
     const points = pointsChip === 'other' ? parseInt(customPoints, 10) : pointsChip;
     if (!points || points <= 0) nextErrors.points = 'Indique un nombre de points valide.';
     if (rounds < 1 || rounds > 8) nextErrors.rounds = 'Le nombre de rondes doit être entre 1 et 8.';
-    if (capacity < 4 || capacity > 200 || capacity % 2 !== 0) {
+    const isTeam = tournament.type === 'team';
+    if (isTeam && (capacity < 2 || capacity > 64)) {
+      nextErrors.capacity = 'Le nombre d’équipes doit être entre 2 et 64.';
+    } else if (!isTeam && (capacity < 4 || capacity > 200 || capacity % 2 !== 0)) {
       nextErrors.capacity = 'La capacité doit être un nombre pair entre 4 et 200.';
     } else if (capacity < tournament.registered_count) {
       nextErrors.capacity = `La capacité ne peut pas être inférieure au nombre d’inscrits actuels (${tournament.registered_count}).`;
@@ -435,7 +438,9 @@ export function TournoiDetailPage({
           <div className="group-title">Capacité</div>
 
           <div className="field">
-            <label>Nombre de joueurs maximum</label>
+            <label>
+              {tournament.type === 'team' ? 'Nombre d’équipes maximum' : 'Nombre de joueurs maximum'}
+            </label>
             <div className="stepper">
               <button
                 type="button"
@@ -502,7 +507,7 @@ export function TournoiDetailPage({
           <div className="group-title">Format</div>
           <div className="row">
             <span className="label">Type</span>
-            <span>{TypeLabels[tournament.type]}</span>
+            <span>{formatTypeLabel(tournament.type, tournament.team_size)}</span>
           </div>
           <div className="row">
             <span className="label">Points de liste</span>
@@ -518,6 +523,9 @@ export function TournoiDetailPage({
             <span>
               {tournament.registered_count} inscrit{tournament.registered_count > 1 ? 's' : ''} /{' '}
               {tournament.capacity} places
+              {tournament.type === 'team' && tournament.team_size
+                ? ` (équipes de ${tournament.team_size})`
+                : ''}
             </span>
           </div>
         </div>

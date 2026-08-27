@@ -44,7 +44,7 @@ import { matchFaction } from '@/lib/factions';
 import { ordinalFr } from '@/lib/ordinal';
 import { flushPushQueue, registerForPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
-import { formatEventDate, TypeLabels } from '@/lib/tournaments';
+import { formatEventDate, formatTypeLabel } from '@/lib/tournaments';
 
 /** Nombre de lignes affichées directement sur la fiche avant « Voir tous ». */
 const InlineRegisteredLimit = 10;
@@ -489,7 +489,7 @@ export default function EvenementDetailScreen() {
               <StatusBadge status={tournament.status} />
               <View style={[styles.typeBadge, { backgroundColor: colors.backgroundSelected }]}>
                 <ThemedText themeColor="textSecondary" style={styles.typeBadgeText}>
-                  {TypeLabels[tournament.type]}
+                  {formatTypeLabel(tournament.type, tournament.team_size)}
                 </ThemedText>
               </View>
             </View>

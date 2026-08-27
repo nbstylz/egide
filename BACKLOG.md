@@ -490,12 +490,51 @@ L'objectif de l'EPIC-3 le prévoyait dès le départ : « les joueurs voient leu
 **Objectif :** formats 3 joueurs (FR), 5–8 (ETC) et taille libre, avec la mécanique d'appariement capitaine vs capitaine.
 **Valeur utilisateur :** EGIDE couvre les plus gros événements du calendrier français (championnats par équipes).
 
-US à affiner au lancement de la phase 2 (grain volontairement plus gros) :
-- **US-7.1** Création d'un tournoi type « équipe » avec taille d'équipe (3 / 5–8 / libre) — **M** — dép. EPIC-1.
-- **US-7.2** Inscription d'une équipe par son capitaine, avec roster nominatif validé — **M** — dép. EPIC-4, US-7.1.
-- **US-7.3** Rondes suisses entre équipes (score d'équipe agrégé) — **L** — dép. EPIC-3, US-7.2.
-- **US-7.4** Écran d'appariement capitaines (choix alterné des matchs joueur contre joueur) — **L** — dép. US-7.3. **Point métier : le protocole exact d'appariement (ordre des picks, timing) varie selon les formats — à préciser avant conception.**
-- **US-7.5** Saisie des scores par table et double classement (équipes + individuel) — **M** — dép. US-7.4.
+**Affiné le 27 août 2026** (agent `product-owner` + agent `ux-ui`). L'ancien grain gros est éclaté en neuf US ; la correspondance est notée à chaque ligne.
+
+### Décision de modèle : réutiliser l'existant, ne rien paralléliser
+
+`team_registrations` et `team_pairings` se posent **au-dessus** de `registrations` / `rounds` / `pairings`, qui ne changent pas : chaque joueur d'un roster reste **une ligne de `registrations`**, chaque match reste **une ligne de `pairings`**. Fonctionnent alors sans une ligne réécrite : le pointage, `set_pairing_score`, la vue `player_results`, le classement individuel, les listes d'armées, la faction déclarée, l'historique, l'écran des tables, le bloc « Le jour J » et les notifications de ronde.
+
+Des tables parallèles auraient imposé deux sources de vérité pour « à quelle table je joue », deux classements individuels, deux historiques, deux exports — et un `if type === 'team'` dans chaque écran des deux applications. **Le vrai coût n'est pas d'écrire ce code, c'est le jour où les deux copies d'une même règle divergent en silence.**
+
+### Hypothèses par défaut, à confirmer par le porteur (expert AoS)
+
+Implémentées telles quelles pour ne pas bloquer l'avancement ; chacune est isolée dans une fonction SQL, donc rectifiable par une migration sans toucher aux écrans.
+
+| # | Question | Défaut retenu |
+|---|---|---|
+| 1 | Protocole d'appariement | **« Pose – deux – choix »** itéré : A pose un joueur, B en présente deux, A choisit lequel l'affronte ; les rôles s'inversent. FR à 3 et ETC à 5-8 sont **le même mécanisme**, paramétré par la taille. |
+| 2 | Effectif pair | Aucune compensation en v1 (l'équipe qui commence pose une fois de plus). |
+| 3 | Issue d'une rencontre | **Plus grand total de points de partie** cumulés, égalité = nulle. Pas la majorité de tables : sur effectif pair, le 2-2 obligerait de toute façon à retomber sur les points. |
+| 4 | Départages d'équipe | **Les six départages individuels, transposés** : rencontres gagnées → points cumulés → tactiques → différentiel → force des adversaires → tirage stable. Une seule grammaire de classement à apprendre. |
+| 5 | Bye d'équipe | 15-5 + 3 tactiques pour **chaque** joueur de l'équipe exempte, et une rencontre gagnée. |
+| 6 | Équipe incomplète le jour J | Pointage possible après confirmation, forfait 15-5 sur la table manquante (mécanisme de la 0014). |
+| 7 | « Taille libre » | Un nombre au choix de l'organisateur (2 à 8), **pas** des tailles différentes dans un même tournoi — ce second sens casserait le protocole et le score de rencontre. |
+| 8 | Listes ouvertes à l'équipe adverse | **Non en v1** — c'est une décision de confidentialité, isolée en US-7.10. |
+| 9 | Scénario | Un par ronde, comme aujourd'hui. |
+| 10 | « Meilleur résultat » du profil | Rangs d'équipe et rangs individuels ne se mélangent pas. |
+
+### Divergence entre les deux agents, tranchée
+
+L'agent `ux-ui` voulait l'appariement **sur un seul appareil** (celui de l'organisateur, comme on jette un dé à deux) ; l'agent `product-owner` le veut **sur le mobile de chaque capitaine**. Les deux ont raison sur leur terrain, et le protocole retenu les réconcilie : **il est strictement séquentiel et sans aucun secret** — à tout instant, chacun voit les deux rosters, les matchs figés et à qui est le tour. Personne n'attend donc un geste invisible, et « tirer pour rafraîchir » suffit. **La décision « pas de temps réel » n'est pas rouverte.** L'écran capitaine sera mobile, et l'organisateur pourra toujours agir à la place d'un capitaine depuis le back office.
+
+- **US-7.1** Tournoi de type « équipe » : taille d'équipe et capacité comptée en équipes — **S** — dép. EPIC-1 (livré). *(ex-7.1)*
+- **US-7.2** Inscription d'équipe en base : `team_registrations`, rattachement des joueurs, capacité et liste d'attente — **M** — dép. US-7.1, EPIC-4. *(ex-7.2, moitié base)*
+- **US-7.3** Le capitaine inscrit son équipe depuis l'app mobile — **M** — dép. US-7.2. **Avis `ux-ui` rendu.** *(ex-7.2, moitié écran)*
+- **US-7.4** Pointage des équipes le jour J — **S** — dép. US-7.3, EPIC-3.
+- **US-7.5** Rondes suisses entre équipes — **L** — dép. US-7.4. *(ex-7.3)*
+  > Les matchs joueur naissent **dans l'ordre des rosters** (position 1 contre position 1). C'est ce qui rend le tournoi jouable **avant** l'écran d'appariement capitaines — exactement ce que font les petits opens et les tournois amicaux.
+- **US-7.6** Score de rencontre et classement des équipes — **M** — dép. US-7.5. *(ex-7.5, moitié classement)*
+  > **Point d'arrêt à viser si le budget se resserre** : à ce stade un tournoi par équipes se déroule intégralement, de l'inscription au podium. Le seul manque est que l'appariement interne à une rencontre est mécanique au lieu d'être négocié.
+- **US-7.7** Écran d'appariement capitaines — **L** — dép. US-7.5, US-7.6. **Avis `ux-ui` rendu.** *(ex-7.4)*
+  > Le seul écran du produit où **un joueur agit** le jour J, avec un état séquentiel à deux acteurs. Construit en dernier, sur des fondations déjà éprouvées en salle.
+- **US-7.8** Le tournoi par équipes vécu côté joueur (bloc « Le jour J », écran des tables groupé par rencontre) — **M** — dép. US-7.6. **Avis `ux-ui` rendu.**
+- **US-7.9** Historique et cohérence des résultats individuels — **S** — dép. US-7.6, US-7.8.
+  > Dans un tournoi par équipes, les appariements sont **négociés par les capitaines**, pas produits par le système suisse. Un « 3e sur 24 » y serait un rang obtenu sur des adversaires choisis : le classement individuel existe, mais **sans podium et sans « tu termines Ne »**. C'est « mieux vaut ne rien montrer que raconter une histoire fausse » appliqué à un rang.
+- **US-7.10** *(optionnelle, à arbitrer)* Listes visibles de l'équipe adverse — **M** — dép. US-7.7 et arbitrage du porteur.
+
+**Refusé pour cet EPIC, noté pour plus tard :** chat de rencontre (c'est l'EPIC-8 en entier), minuterie automatique d'appariement (exige cron + temps réel, là où l'organisateur règle le cas en marchant trois mètres), bans de scénarios et choix de côté de table (raffinements ETC qui multiplient les états de l'écran le plus complexe), équipes de tailles inégales, joueur « libre » affecté à une équipe, circuit et ELO par équipes (EPIC-11 — et l'ELO suppose des appariements non négociés), push « c'est à ton tour de poser » (l'EPIC-6 n'est toujours pas vérifié en réception : ne pas empiler dessus).
 
 ## EPIC-8 — Chat (Phase 2)
 

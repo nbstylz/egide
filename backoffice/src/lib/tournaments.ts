@@ -16,8 +16,11 @@ export type Tournament = {
   event_date: string; // format ISO « AAAA-MM-JJ »
   points_limit: number;
   rounds_count: number;
+  /** Compté en JOUEURS pour un tournoi individuel, en ÉQUIPES pour un tournoi par équipes. */
   capacity: number;
   type: TournamentType;
+  /** Joueurs par équipe (2 à 8). Non nul si et seulement si `type` vaut 'team'. */
+  team_size: number | null;
   status: TournamentStatus;
   created_at: string;
   updated_at: string;
@@ -35,6 +38,18 @@ export const TypeLabels: Record<TournamentType, string> = {
   individual: 'Individuel',
   team: 'Équipe',
 };
+
+/**
+ * Libellé de format affiché à côté d'un tournoi.
+ *
+ * « Par équipes de 3 » plutôt que « Équipe » : la taille est l'information qui
+ * décide si je peux venir. Un joueur seul, ou un capitaine avec deux
+ * coéquipiers, doit le savoir avant d'ouvrir la fiche.
+ */
+export function formatTypeLabel(type: TournamentType, teamSize: number | null): string {
+  if (type === 'team' && teamSize) return `Par équipes de ${teamSize}`;
+  return TypeLabels[type];
+}
 
 /** Statuts pour lesquels l'édition est encore autorisée. */
 export const EditableStatuses: TournamentStatus[] = ['draft', 'open'];

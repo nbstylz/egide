@@ -44,7 +44,9 @@ export default function CreerTournoiScreen() {
   const [customPoints, setCustomPoints] = useState('');
   const [rounds, setRounds] = useState(5);
   const [capacity, setCapacity] = useState(32);
+  const [teamSize, setTeamSize] = useState(3);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const isTeam = type === 'team';
   const [serverError, setServerError] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -83,7 +85,14 @@ export default function CreerTournoiScreen() {
     if (!points || points <= 0) nextErrors.points = 'Indique un nombre de points valide.';
 
     if (rounds < 1 || rounds > 8) nextErrors.rounds = 'Le nombre de rondes doit être entre 1 et 8.';
-    if (capacity < 4 || capacity > 200 || capacity % 2 !== 0) {
+    if (isTeam) {
+      if (capacity < 2 || capacity > 64) {
+        nextErrors.capacity = 'Le nombre d’équipes doit être entre 2 et 64.';
+      }
+      if (teamSize < 2 || teamSize > 8) {
+        nextErrors.teamSize = 'Une équipe compte entre 2 et 8 joueurs.';
+      }
+    } else if (capacity < 4 || capacity > 200 || capacity % 2 !== 0) {
       nextErrors.capacity = 'La capacité doit être un nombre pair entre 4 et 200.';
     }
 
@@ -109,6 +118,9 @@ export default function CreerTournoiScreen() {
       rounds_count: rounds,
       capacity,
       type,
+      // La base refuse un tournoi par équipes sans taille, et une taille sur un
+      // tournoi individuel (contrainte croisée de la 0041).
+      team_size: isTeam ? teamSize : null,
       status: 'open',
     });
     setBusy(false);
@@ -223,13 +235,30 @@ export default function CreerTournoiScreen() {
           <ThemedText type="small">Type de tournoi</ThemedText>
           <SegmentedControl
             value={type}
-            onChange={setType}
+            onChange={(next) => {
+              setType(next);
+              // La capacité change d'unité avec le type : 32 équipes de 3 font
+              // 96 joueurs. Repartir d'une valeur plausible évite le tournoi
+              // créé pour dix fois trop de monde.
+              setCapacity(next === 'team' ? 12 : 32);
+            }}
             options={[
               { value: 'individual', label: 'Individuel' },
-              { value: 'team', label: 'Équipe', disabled: true, badge: 'Bientôt' },
+              { value: 'team', label: 'Équipe' },
             ]}
           />
         </View>
+
+        {isTeam ? (
+          <View style={styles.field}>
+            <ThemedText type="small">Joueurs par équipe</ThemedText>
+            <Stepper value={teamSize} onChange={setTeamSize} min={2} max={8} disabled={busy} />
+            <ThemedText type="small" themeColor="textSecondary">
+              3 joueurs : format français. 5 à 8 : format ETC. Toutes les équipes
+              alignent le même nombre de joueurs.
+            </ThemedText>
+          </View>
+        ) : null}
 
         <View style={styles.field}>
           <ThemedText type="small">Points de liste</ThemedText>
@@ -296,13 +325,25 @@ export default function CreerTournoiScreen() {
         </ThemedText>
 
         <View style={styles.field}>
-          <ThemedText type="small">Nombre de joueurs maximum</ThemedText>
-          <Stepper value={capacity} onChange={setCapacity} min={4} max={200} step={2} disabled={busy} />
-          {renderError('capacity') ?? (
-            <ThemedText type="small" themeColor="textSecondary">
-              Un nombre pair évite les rondes avec exempt (bye).
-            </ThemedText>
+          <ThemedText type="small">
+            {isTeam ? 'Nombre d’équipes maximum' : 'Nombre de joueurs maximum'}
+          </ThemedText>
+          {isTeam ? (
+            <Stepper value={capacity} onChange={setCapacity} min={2} max={64} disabled={busy} />
+          ) : (
+            <Stepper value={capacity} onChange={setCapacity} min={4} max={200} step={2} disabled={busy} />
           )}
+          {renderError('capacity') ??
+            (isTeam ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                Soit {capacity * teamSize} joueurs attendus. Un nombre pair d’équipes
+                évite les rondes avec exempt (bye).
+              </ThemedText>
+            ) : (
+              <ThemedText type="small" themeColor="textSecondary">
+                Un nombre pair évite les rondes avec exempt (bye).
+              </ThemedText>
+            ))}
         </View>
 
         {serverError ? (
