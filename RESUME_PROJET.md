@@ -1,7 +1,7 @@
 # EGIDE — résumé du projet
 
 > Document de passation : à donner tel quel au début d'une nouvelle conversation pour
-> reprendre le travail sans repartir de zéro. Dernière mise à jour : 23 août 2026.
+> reprendre le travail sans repartir de zéro. Dernière mise à jour : 27 août 2026.
 
 ## 1. Le projet en trois phrases
 
@@ -27,7 +27,7 @@ deux côtés (`lib/supabase.ts`, `lib/tournaments.ts`, `lib/ordinal.ts`, `hooks/
 
 ### Règle d'architecture centrale
 
-**La logique métier vit dans Postgres, pas dans le client.** 22 migrations numérotées et
+**La logique métier vit dans Postgres, pas dans le client.** 39 migrations numérotées et
 **immuables** dans `supabase/migrations/` — pour changer quoi que ce soit, on **ajoute** une
 migration `00NN_description.sql`, on n'édite jamais une existante. Les fonctions sont en
 `security definer` avec des `grant`/`revoke` explicites, appelées via `supabase.rpc(...)`.
@@ -54,7 +54,7 @@ Fonctions clés : `register_for_tournament`, `promote_waitlist`, `start_tourname
 ## 4. État d'avancement
 
 **Livré et testé : EPIC-1 à 6 (MVP phase 1), EPIC-12 (administration) et EPIC-9 (profil enrichi).**
-Migrations 0001 à 0037.
+Migrations 0001 à 0039.
 
 | EPIC | Contenu | État |
 |---|---|---|
@@ -64,7 +64,7 @@ Migrations 0001 à 0037.
 | 4 | Équipes (création, code d'invitation, roster, capitanat) | Livré |
 | 5 | Listes d'armées (texte + PDF, relecture organisateur) | Livré |
 | 6 | Notifications push | **Codé, réception non vérifiée** |
-| 9 | Profil enrichi : historique des tournois, factions jouées | Livré (2026-08-22) |
+| 9 | Profil enrichi : historique, factions jouées, **déclaration de faction** | Livré (2026-08-27) |
 | 12 | Administration de la plateforme (6 US) | Livré (2026-08-22), validé en navigateur |
 
 Post-MVP livré par ailleurs : Circuit FR (+ page publique partageable), duplication de
@@ -118,19 +118,32 @@ avec son troisième mode de barre latérale sur les routes `/admin/*`.
     le porteur : 24 factions de 4e édition, Beasts of Chaos retirée (passée en Legends),
     Helsmiths of Hashut ajoutée, et **aucune entrée « Autre »** — un fourre-tout se remplit
     toujours, et une ligne « Autre » ne dit rien de personne dans une statistique.
-11. **Le pouvoir d'administration est vérifié par la base, jamais par l'interface.**
+11. **La faction jouée se déclare sur l'inscription, pas sur la liste d'armée**
+    (2026-08-27, migrations 0038-0039). `registrations.faction` est la source de
+    vérité ; `army_lists.faction` reste une trace que plus personne ne lit pour
+    statuer. Deux règles en découlent, gravées en base et pas seulement dans
+    l'écran : la faction est **visible des membres connectés, jamais des visiteurs
+    anonymes** (c'est le niveau où se trouvait déjà la faction favorite ; en AoS le
+    secret qui compte est le *contenu* de la liste, que la 0018 protège) ; et
+    **« combler oui, réécrire non »** — une faction absente peut être renseignée
+    même après le tournoi, celle qu'ont vue les adversaires ne change plus.
+12. **`faction_favorite` ne s'affiche plus dans un contexte de tournoi.** Elle disait
+    « ce que j'aime jouer » là où l'écran promettait « ce qui est aligné aujourd'hui ».
+    Elle reste légitime au profil et au roster d'équipe. Conséquence assumée : les
+    tournois déjà joués n'affichent plus de faction tant que personne n'a comblé.
+13. **Le pouvoir d'administration est vérifié par la base, jamais par l'interface.**
     `is_admin()` est la seule source de vérité ; masquer une entrée de menu n'est qu'un
     confort. Corollaire tenu partout : la lecture seule de l'admin est vraie en base — un
     `update` admin sur le tournoi d'autrui touche zéro ligne, la politique d'écriture de la
     0002 n'ayant jamais été touchée.
-12. **Règle d'ergonomie de l'administration : le tableau consulte, le détail agit.** Aucune
+14. **Règle d'ergonomie de l'administration : le tableau consulte, le détail agit.** Aucune
     action destructrice dans une ligne de liste. Vaut pour l'annulation de tournoi, la
     désactivation de compte et la dissolution d'équipe.
-13. **Aucun pourcentage sur un petit échantillon.** Sur cinq parties, un taux de victoire de
+15. **Aucun pourcentage sur un petit échantillon.** Sur cinq parties, un taux de victoire de
     60 % couvre en réalité de 15 % à 95 % : il n'informe pas, il fait croire à une mesure.
     Les statistiques joueur n'affichent que des entiers ; le taux de victoire est renvoyé à
     l'EPIC-11 (stats méta), où l'échantillon est celui de la communauté.
-14. **Mieux vaut ne rien montrer que raconter une histoire fausse.** Appliqué trois fois :
+16. **Mieux vaut ne rien montrer que raconter une histoire fausse.** Appliqué trois fois :
     un inscrit jamais pointé n'apparaît pas dans son historique ; un tournoi en cours ne
     reçoit pas de rang ; `profiles.faction_favorite` n'est jamais substituée à la faction
     réellement jouée.
@@ -214,6 +227,11 @@ avec son troisième mode de barre latérale sur les routes `/admin/*`.
     La 0001 avait accordé `UPDATE` sur `profiles` entière : la colonne `role` de la 0028
     aurait permis à n'importe qui de se nommer administrateur. C'est le piège de la 0016,
     revenu à l'identique. **À vérifier à chaque nouvelle colonne sensible.**
+    Revenu une **troisième** fois avec `registrations.faction` (0038). Comme aucun
+    client n'écrit directement dans cette table — tout passe par des fonctions
+    `security definer` — le droit d'`UPDATE` y a été **retiré** au lieu d'être
+    découpé, et le `SELECT` d'`anon` re-accordé colonne par colonne. **Règle
+    permanente : toute colonne ajoutée désormais à `registrations` est privée.**
 
 ## 9. Environnement et accès
 
@@ -247,19 +265,23 @@ avec son troisième mode de barre latérale sur les routes `/admin/*`.
 
 ## 10. Prochaines étapes possibles
 
-**Deux décisions attendent le porteur — rien ne peut avancer proprement sans elles :**
+**Une décision attend le porteur — rien ne peut avancer proprement sans elle :**
 
-1. **Arbitrer l'US-9.3** proposée par l'agent `ux-ui` : déclarer sa faction directement sur
-   la fiche d'un tournoi, sans passer par une liste d'armée. Sans elle, la section
-   « Factions jouées » restera anecdotique — le gros du trou de couverture vient des
-   tournois qui ne demandent pas de liste.
-2. **Trancher le protocole d'appariement des capitaines** avant d'ouvrir l'EPIC-7 : l'US-7.4
+1. **Trancher le protocole d'appariement des capitaines** avant d'ouvrir l'EPIC-7 : l'US-7.4
    signale que l'ordre des choix et le tempo varient selon les formats.
 
 **Deux arbitrages hérités de l'EPIC-12 :** ouvrir ou non le contenu des listes d'armées à
 l'administration (aujourd'hui privé entre le joueur et son organisateur, et la page le dit),
 et livrer ou non la page « Journal » — sa place est réservée dans la navigation, tout est
 déjà en base. Un journal d'audit que personne n'ouvre ne protège personne.
+
+**Livré le 27 août 2026 :** liste des 24 factions validée par le porteur (Beasts of Chaos
+retirée, Helsmiths of Hashut ajoutée, pas d'entrée « Autre »), puis **US-9.3 en entier**
+(migrations 0038-0039, carte « Ma préparation », fin de la substitution de la faction
+favorite dans les deux applications). **Reste l'US-9.4** : permettre à l'organisateur de
+renseigner la faction d'un joueur au pointage — un inscrit de la veille qui ne déclare
+rien ne peut plus jamais combler seul. Le référentiel `public.factions` est déjà en base
+pour ça, le back office n'ayant aucune copie de `src/lib/factions.ts`.
 
 **Ensuite, par ordre de valeur :**
 
