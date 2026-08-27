@@ -653,7 +653,12 @@ L'agent `ux-ui` voulait l'appariement **sur un seul appareil** (celui de l'organ
 
 ## EPIC-11 — Phase 3
 
-- **US-11.1** Classement ELO national — dép. EPIC-9.
+- **US-11.1** Classement ELO national — dép. EPIC-9. — ✅ **Livrée (2026-08-27)**
+  > Migration 0051 : `national_elo(min_parties)`, écran `/elo`. Départ à 1000, K = 24 — un K modéré, parce qu'en AoS on dispute cinq parties par week-end, pas trois par semaine.
+  > **La marge ne compte pas** : gagner 20-0 ou 41-39 rapporte autant. L'ELO mesure « qui bat qui » ; l'écart de points dépend surtout du scénario, et le différentiel a déjà sa place dans les départages d'un tournoi.
+  > **Tournois par équipes exclus** (appariements négociés, un ELO suppose des adversaires qu'on ne choisit pas), **bye et forfaits exclus**, **cinq parties minimum** pour apparaître — en dessous ce n'est pas un classement, c'est un tirage. Même famille de décision que le seuil du taux de victoire.
+  > **Rien n'est stocké** : le calcul est rejoué dans l'ordre chronologique à chaque appel, donc un score corrigé par l'organisateur se répercute sans recalcul et sans divergence. Le jour où le volume l'exigera, ce sera un cache — pas une deuxième source de vérité.
+  > 4 assertions SQL passées, dont la plus parlante : **la somme des écarts au socle est exactement nulle**, le système ne crée ni ne détruit de points.
 - **US-11.2** Carte interactive des événements — dép. EPIC-2.
 - **US-11.3** Statistiques méta (factions, taux de victoire) — dép. EPIC-9. — ✅ **Livrée (2026-08-27)**
   > Migration 0050 : `faction_meta_stats(depuis, région)` et `meta_coverage()`. Écran `/meta`, accessible depuis le Profil — après « ce que j'ai fait », « ce que font les autres ».

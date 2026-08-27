@@ -219,6 +219,25 @@ export default function ProfilScreen() {
           <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
         </Pressable>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Classement national"
+          onPress={() => router.push('/elo')}
+          style={({ pressed }) => [
+            styles.historyCard,
+            {
+              backgroundColor: pressed ? colors.backgroundSelected : colors.backgroundElement,
+            },
+          ]}>
+          <Ionicons name="trending-up-outline" size={20} color={colors.tint} />
+          <ThemedView style={styles.historyTexts}>
+            <ThemedText style={styles.historyTitle}>Classement national</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+              Qui bat qui, toutes régions confondues
+            </ThemedText>
+          </ThemedView>
+          <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+        </Pressable>
+        <Pressable
           style={({ pressed }) => [
             styles.button,
             { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },
